@@ -265,6 +265,13 @@ a.btn { text-decoration: none; color: inherit; }
 .graph a { color: var(--accent); font-weight: 600; }
 .top-actions { flex-wrap: wrap; }
 
+.desmos-box { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.dx { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dx code { font: 1rem ui-monospace, Menlo, Consolas, monospace; background: var(--surface-2); border: 1px solid var(--line); padding: 5px 10px; border-radius: 6px; flex: 1 1 auto; min-width: 0; overflow-x: auto; }
+.dx .btn { padding: 5px 12px; font-size: .85rem; }
+.desmos-check summary { cursor: pointer; font-weight: 600; color: var(--accent); font-size: .92rem; }
+.desmos-check[open] summary { margin-bottom: 8px; }
+
 @media (max-width: 980px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .board { position: relative; top: auto; height: 520px; }
@@ -469,7 +476,7 @@ function qProj({ b, c, obj, ground = "the ground", verb = "starts moving", text,
       [`the speed of the ${obj}`, "Speed isn't the unknown here. The question asks how much time, so t is time in seconds."]]),
     work: { kind: "abc", v: "t", a, b, c, disc: true, next: "Now substitute into the quadratic formula." }, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
     eqHint: `Touching ${ground} means the height is 0.`,
-    why: `There's a t term, and b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`,
+    why: `There's a t term, and b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula, or graph it.`,
     fields: [{ label: "t", unit: "seconds" }], sets: [[pos]], reject: [neg], rejectMsg: "Time can't be negative. Keep only the positive solution.",
     ans: `t ${ap(pos)}${T(" seconds")}`,
     interp: `The ${obj} reaches ${ground} after ${apT(pos)} seconds${obj === "ball" && /court/.test(ground) ? ", so the other team has about that much time to hit it" : ""}.`,
@@ -502,7 +509,7 @@ function qFence({ F, A, unit = "m", place = "garden", wall = "fence", text, src 
       [`the perimeter of the ${place}`, `The unknowns are the side lengths. Let w be each side touching the ${wall}.`]]),
     work: { kind: "abc", v: "w", a: 2, b: -F, c: A, disc: true, next: "Now substitute into the quadratic formula." }, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
     eqHint: `Draw it! The ${wall} is one side, so the fencing covers only three sides: two widths (w) and one length.`,
-    why: `After you expand and set it equal to zero, b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`,
+    why: `After you expand and set it equal to zero, b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula, or graph it.`,
     fields: [{ label: "w", unit: `${unit} (each side touching the ${wall})` }, { label: "l", unit: `${unit} (side parallel to the ${wall})` }],
     sets: [[w1, l1], [w2, l2]], reject: [], rejectMsg: "",
     ans: `${d2(w1)} \\times ${d2(l1)}${T(" " + unit)}${OR}${d2(w2)} \\times ${d2(l2)}${T(" " + unit)}`,
@@ -536,7 +543,7 @@ function qTri({ S, c, unit = "in", text, src }) {
       ["the area of the triangle", "The question asks for the legs, so let x be the length of one leg."]]),
     work: { kind: "abc", v: "x", a: 2, b: B, c: C, disc: true, next: "Now substitute into the quadratic formula." }, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
     eqHint: `Call one leg x. Since the legs add to ${S}, what is the other leg? Then use a² + b² = c².`,
-    why: `After you expand and set it equal to zero, b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`,
+    why: `After you expand and set it equal to zero, b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula, or graph it.`,
     fields: [{ label: "Leg 1", unit }, { label: "Leg 2", unit }], sets: [[x1, x2], [x2, x1]], reject: [], rejectMsg: "",
     ans: `${d2(x1)}${T(" " + unit + " and ")}${d2(x2)}${T(" " + unit)}`,
     interp: `The legs are ${apT(x1)} ${unit} and ${apT(x2)} ${unit}. Check: they add to ${S}, and ${d2(x1)}² + ${d2(x2)}² ≈ ${c * c} = ${c}².`,
@@ -831,7 +838,7 @@ function graphSVG(q) {
   s += `<text class="g-title" transform="translate(14 ${mT + ph / 2}) rotate(-90)" text-anchor="middle">${esc(g.yl)}</text></svg>`;
   const fx = poly(g.f, "x");
   return `<div class="graph"><h4>Check with a graph</h4>${s}
-    <p class="muted"><a href="${DESMOS}" target="_blank" rel="noopener noreferrer">Open Desmos ↗</a> and graph ${M("y = " + fx)}${level ? ` and ${M("y = " + level)}` : ""}, then click the ${level ? "intersection" : "x-intercept"}${keys.length > 1 ? "s" : ""}.</p></div>`;
+    <p class="muted">Graph it yourself in Desmos, then click the ${level ? "intersection" : "x-intercept"}${keys.length > 1 ? "s" : ""}:</p>${desmosPanel(q)}</div>`;
 }
 
 /* ---------- State ---------- */
@@ -866,12 +873,15 @@ function render() {
 function methodLabel(id) { return METHODS.find(m => m.id === id).label; }
 function methodStatusFor(q, m) {
   if (m === q.best) return "right";
+  if (m === "graph" && q.best === "formula") return "right";
   if (q.alsoOk.includes(m) || m === "graph") return "ok";
   return "wrong";
 }
 function methodExtra(q, r) {
   const m = r.method;
-  if (m === "graph") return " The directions allow a graph too: sketch it with the axes and key points labeled, and read the key points to the nearest hundredth.";
+  if (m === "graph") return r.methodStatus === "right"
+    ? " In step 4 you'll graph it in Desmos and read the key points to the nearest hundredth."
+    : " The directions allow a graph too. In step 4 you'll graph it in Desmos and read the key points to the nearest hundredth.";
   if (r.methodStatus !== "wrong") return "";
   if (m === "formula") return " The quadratic formula works for ANY quadratic, but this one can be solved faster another way.";
   if (m === "factor") return " Quick check: b² − 4ac isn't a perfect square, so it won't factor.";
@@ -881,7 +891,36 @@ function methodExtra(q, r) {
 function stepHead(n, txt) { return `<h3><span class="step-num">${n}</span>${txt}</h3>`; }
 const DESMOS = "https://www.desmos.com/calculator";
 const desmosLink = (txt = "Open Desmos ↗") => `<a class="btn" href="${DESMOS}" target="_blank" rel="noopener noreferrer">${txt}</a>`;
+const usesGraph = q => !!(state.res[q.id] && state.res[q.id].method === "graph");
+function graphRoots(q) {
+  const [a, b, c] = q.graph.f, cc = c - (q.graph.level || 0), D = b * b - 4 * a * cc;
+  if (D < 0) return [];
+  const rs = [(-b + Math.sqrt(D)) / (2 * a), (-b - Math.sqrt(D)) / (2 * a)].sort((x, y) => y - x);
+  return Math.abs(rs[0] - rs[1]) < 1e-9 ? [rs[0]] : rs;
+}
+function plainPoly([a, b, c]) {
+  let out = "";
+  [[a, "x^2"], [b, "x"], [c, ""]].forEach(([k, v]) => {
+    if (!k) return; const abs = Math.abs(k), body = v && abs === 1 ? v : abs + v;
+    out += out ? (k < 0 ? "-" : "+") + body : (k < 0 ? "-" : "") + body;
+  });
+  return out || "0";
+}
+const desmosExprs = q => ["y=" + plainPoly(q.graph.f), ...(q.graph.level ? ["y=" + q.graph.level] : [])];
+function desmosPanel(q) {
+  return `<div class="desmos-box">${desmosExprs(q).map(e => `<div class="dx"><code>${esc(e)}</code><button class="btn" type="button" data-copy="${esc(e)}">Copy</button></div>`).join("")}
+    <div class="actions" style="align-items:center">${desmosLink()}<span class="hint-line">Paste each line into its own Desmos box. Zoom out if you can't see where the graph crosses.</span></div></div>`;
+}
+function copyText(txt, btn) {
+  const done = ok => { btn.textContent = ok ? "Copied!" : "Select and copy"; setTimeout(() => { btn.textContent = "Copy"; }, 1600); };
+  const fallback = () => {
+    try { const ta = document.createElement("textarea"); ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand("copy"); ta.remove(); done(ok); } catch (e) { done(false); }
+  };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => done(true), fallback); else fallback(); } catch (e) { fallback(); }
+}
 function workFields(q) {
+  if (usesGraph(q)) return graphRoots(q).map((x, i) => ({ label: `Point ${i + 1}: x` }));
   const w = q.work;
   if (w.kind === "sq") return [{ label: `${w.v}²` }];
   const f = [{ label: "a" }, { label: "b" }, { label: "c" }];
@@ -889,6 +928,7 @@ function workFields(q) {
   return f;
 }
 function workShow(q) {
+  if (usesGraph(q)) return graphRoots(q).map(x => `x ${ap(x)}`).join(",\\quad ");
   const w = q.work;
   if (w.kind === "sq") return w.show;
   return `${poly([w.a, w.b, w.c], w.v)} = 0\\qquad a = ${w.a},\; b = ${w.b},\; c = ${w.c}` + (w.disc ? `\\qquad b^2 - 4ac = ${w.b * w.b - 4 * w.a * w.c}` : "");
@@ -897,6 +937,13 @@ function checkWork(q, raws) {
   const labels = workFields(q).map(f => f.label), w = q.work;
   const vals = raws.map((x, i) => { try { return parseValue(x); } catch (e) { throw new Error(`${labels[i]}: ${e.message}`); } });
   const near = (x, y) => Math.abs(x - y) <= 1e-6 * Math.max(1, Math.abs(y));
+  if (usesGraph(q)) {
+    const roots = graphRoots(q), match = tol => roots.every(rt => vals.some(v => Math.abs(v - rt) <= tol + 1e-9)) && vals.every(v => roots.some(rt => Math.abs(v - rt) <= tol + 1e-9));
+    if (match(0.011)) return { ok: true };
+    if (match(0.06)) return { ok: false, abcOk: true, msg: "Close! Click each point in Desmos and round its x-value to the nearest hundredth." };
+    if (roots.some(rt => rt < 0) && vals.every(v => v >= 0)) return { ok: false, msg: "Enter every x-value where the graph crosses, even negative ones. You'll decide which ones make sense in step 5." };
+    return { ok: false, msg: `Check your graph. Type the equation${q.graph.level ? "s" : ""} exactly as shown, then click each point where the graph crosses ${q.graph.level ? `the line y = ${q.graph.level}` : "the x-axis"}. The x-value is the first number.` };
+  }
   if (w.kind === "sq") return Math.abs(vals[0] - w.val) <= 0.011 ? { ok: true } : { ok: false, msg: `Not quite. ${w.hint}` };
   const [a, b, c] = vals;
   if (Math.abs(a) < 1e-12) return { ok: false, msg: "a can't be 0. It's the number in front of the squared term." };
@@ -946,26 +993,31 @@ function renderQuestion() {
   h += `</div>`;
   /* Step 3: method */
   h += `<div class="step">${stepHead(3, "What is the best method to solve it?")}<div class="methods" role="radiogroup" aria-label="Method">`;
-  const methodDone = r.methodStatus !== null;
+  const methodDone = r.methodStatus !== null, st0 = r.methodStatus;
   for (const m of METHODS) {
     let cls = "";
-    if (methodDone) { if (m.id === q.best) cls = "right"; else if (m.id === r.method) cls = r.methodStatus === "ok" ? "ok" : "wrong"; }
+    if (methodDone) { if (m.id === q.best || (m.id === r.method && st0 === "right")) cls = "right"; else if (m.id === r.method) cls = st0 === "ok" ? "ok" : "wrong"; }
     else if (r.method === m.id) cls = "sel";
     h += `<button class="method ${cls}" data-method="${m.id}" type="button" role="radio" aria-checked="${r.method === m.id}" ${methodDone ? "disabled" : ""}><b>${m.label}</b><small>${m.sub}</small></button>`;
   }
   h += `</div>`;
   if (!methodDone) { h += `<div class="actions"><button class="btn primary" id="checkMethod" type="button" ${r.method ? "" : "disabled"}>Check method</button>${help}</div></div>`; return end(); }
   const st = r.methodStatus;
-  const head = st === "right" ? "Yes, that's the best method." : st === "ok" ? `That works too. The best method is <strong>${methodLabel(q.best)}</strong>.` : `Not the best choice. The best method is <strong>${methodLabel(q.best)}</strong>.`;
+  const head = st === "right"
+    ? (r.method === "graph" ? "Yes, graphing works here."
+      : q.best === "formula" ? "Yes, that's a best method. Graphing in Desmos would work too." : "Yes, that's the best method.")
+    : st === "ok" ? `That works too. The best method is <strong>${methodLabel(q.best)}</strong>.` : `Not the best choice. The best method is <strong>${methodLabel(q.best)}</strong>.`;
   h += feedback(st === "right" ? "good" : st === "ok" ? "warn" : "bad", st === "wrong" ? "✗" : "✓", `${head} ${esc(q.why)}${esc(methodExtra(q, r))}`);
-  if (r.method === "graph") h += `<div class="actions">${desmosLink("Graph it in Desmos ↗")}</div>`;
   h += `</div>`;
   /* Step 4: work it out */
   const wf = workFields(q), wd = (state.wdrafts && state.wdrafts[q.id]) || [], workDone = r.workStatus === "right" || r.workStatus === "shown";
-  const prompt = q.work.kind === "sq"
+  const gp = usesGraph(q), lvl = q.graph.level;
+  const prompt = gp
+    ? `Type ${lvl ? "both equations" : "the equation"} below into Desmos. Desmos uses x and y, so x stands for ${v}. Then click each point where the graph crosses ${lvl ? `the line y = ${lvl}` : "the x-axis"} and enter every x-value, rounded to the nearest hundredth.`
+    : q.work.kind === "sq"
     ? `Start solving: get ${v}² by itself. What does ${v}² equal?`
     : `Start solving: write the equation in standard form, a${v}² + b${v} + c = 0. What are a, b and c?${q.work.disc ? " Then find the discriminant." : ""}`;
-  h += `<div class="step">${stepHead(4, "Work it out")}<p class="hint-line" style="margin:0;font-size:.92rem;color:var(--ink)">${esc(prompt)}</p>
+  h += `<div class="step">${stepHead(4, gp ? "Graph it" : "Work it out")}<p class="hint-line" style="margin:0;font-size:.92rem;color:var(--ink)">${esc(prompt)}</p>${gp && !workDone ? desmosPanel(q) : ""}
     <div class="work-grid">${wf.map((f, i) => `<div class="answer-row"><label for="wk${i}">${esc(f.label)} =</label><input id="wk${i}" class="wk" data-wk="${i}" type="text" autocomplete="off" spellcheck="false" inputmode="decimal" value="${esc(wd[i] || "")}" ${workDone ? "disabled" : ""}></div>`).join("")}</div>`;
   if (!workDone) h += `<div class="actions"><button class="btn primary" id="checkWork" type="button">Check work</button>${r.workTries ? `<button class="btn" id="showWork" type="button">Show me</button>` : ""}${help}</div>`;
   if (r.workLast) {
@@ -973,8 +1025,8 @@ function renderQuestion() {
     if (L.status === "error") h += feedback("warn", "!", esc(L.msg));
     else if (L.status === "wrong") h += feedback(L.abcOk ? "warn" : "bad", L.abcOk ? "!" : "✗", `<strong>${L.abcOk ? "Almost." : "Not quite."}</strong> ${esc(L.msg)}`);
   }
-  if (r.workStatus === "right") h += feedback("good", "✓", `<strong>Correct!</strong> ${r.workLast && r.workLast.equiv ? "You used an equivalent form of the equation, which is fine. " : ""}${esc(q.work.next)}`);
-  if (r.workStatus === "shown") h += feedback("warn", "!", `Here are the values: ${M(workShow(q))}. ${esc(q.work.next)}`);
+  if (r.workStatus === "right") h += feedback("good", "✓", `<strong>Correct!</strong> ${r.workLast && r.workLast.equiv ? "You used an equivalent form of the equation, which is fine. " : ""}${esc(gp ? "Now decide which of these make sense in the problem." : q.work.next)}`);
+  if (r.workStatus === "shown") h += feedback("warn", "!", `Here are the values: ${M(workShow(q))}. ${esc(gp ? "Now decide which of these make sense in the problem." : q.work.next)}`);
   h += `</div>`;
   if (!workDone) return end();
   /* Step 5: solve and interpret */
@@ -993,11 +1045,12 @@ function renderQuestion() {
     </div>
     <div class="actions"><button class="btn primary" id="checkAns" type="button">Check answer</button>
       ${r.attempts ? `<button class="btn" id="reveal" type="button">Show solution</button>` : ""}
-      ${desmosLink("Check in Desmos ↗")}${help}</div>`}
+      ${help}</div>
+    ${gp ? "" : `<details class="desmos-check"><summary>Check your answer in Desmos</summary>${desmosPanel(q)}</details>`}`}
     ${answerFeedback(r)}
   </div>`;
   if (finished) {
-    h += `<div class="solution"><h4>Worked solution</h4><ol>${q.steps.map(s => `<li><p>${esc(s.t)}</p><div class="m">${M(s.m)}</div></li>`).join("")}</ol>
+    h += `<div class="solution"><h4>Worked solution</h4>${gp ? `<p class="muted" style="margin:0 0 8px">You solved by graphing. Here is the algebra for comparison. Both give the same answer.</p>` : ""}<ol>${q.steps.map(s => `<li><p>${esc(s.t)}</p><div class="m">${M(s.m)}</div></li>`).join("")}</ol>
       <p style="margin:12px 0 0"><b>Answer:</b> ${M(q.ans)}</p>
       <p style="margin:8px 0 0"><b>Interpretation:</b> ${esc(q.interp)}</p></div>${graphSVG(q)}`;
   }
@@ -1115,7 +1168,7 @@ function renderHelp() {
         def: ["Start by defining the variable: what unknown is the question asking about?", "Variable hint", "What is the question asking you to find? The variable stands for that unknown, with its units."],
         eq: ["Now write the equation using your variable.", "Equation hint", q.eqHint],
         method: ["Now choose a method. Use the guide below to decide.", "Method hint", methodHint(q)],
-        work: ["Now start solving.", "Work hint", q.work.kind === "sq" ? q.work.hint : "Distribute, move every term to one side so the equation equals 0, and combine like terms. a goes with the squared term, b with the variable term, and c is the constant." + (q.work.disc ? " Then b² − 4ac." : "")],
+        work: ["Now start solving.", "Work hint", usesGraph(q) ? `Copy the equation${q.graph.level ? "s" : ""} into Desmos. Click each point where the graph crosses ${q.graph.level ? "the line" : "the x-axis"}; Desmos shows its coordinates (x, y). Enter the x-values. If you can't see the points, zoom out.` : q.work.kind === "sq" ? q.work.hint : "Distribute, move every term to one side so the equation equals 0, and combine like terms. a goes with the squared term, b with the variable term, and c is the constant." + (q.work.disc ? " Then b² − 4ac." : "")],
       }[stage];
       h += `<p class="muted">${info[0]}</p>`;
       if (helpSteps > 0) h += `<div class="hint-steps"><div class="h"><p>${info[1]}</p><div>${esc(info[2])}</div></div></div>`;
@@ -1162,6 +1215,7 @@ function renderHelp() {
 document.addEventListener("click", e => {
   const t = e.target.closest("button"); if (!t) return;
   const q = state.view === "q" ? state.questions[state.cur] : null;
+  if (t.dataset.copy !== undefined) { copyText(t.dataset.copy, t); return; }
   if (t.matches(".dot")) { state.cur = +t.dataset.i; state.view = "q"; render(); return; }
   if (t.id === "helpBtn" || t.hasAttribute("data-help")) { openHelp(); return; }
   if (t.id === "helpClose") { closeHelp(); return; }
