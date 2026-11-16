@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Multiple Methods Review</title>
+<title>Quadratic Word Problems</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
@@ -236,6 +236,14 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .g-tick { fill: var(--muted); font: 13px var(--font-body); }
 .g-lab { fill: var(--good); font: 600 15px var(--font-body); }
 
+.problem { margin: 14px 0 4px; padding: 14px 16px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); font-size: 1.02rem; line-height: 1.6; }
+.method.eqc { align-items: center; justify-content: center; font-size: 1.12rem; min-height: 54px; overflow-x: auto; }
+.unit { color: var(--muted); font-size: .88rem; }
+.answer-row label { font-family: var(--font-body); font-style: normal; font-size: 1rem; font-weight: 600; }
+.answer-row input { flex: 1 1 140px; max-width: 220px; }
+.g-level { stroke: var(--warn); stroke-width: 2; stroke-dasharray: 6 5; }
+.g-title { fill: var(--muted); font: 600 14px var(--font-body); }
+
 @media (max-width: 980px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .board { position: relative; top: auto; height: 520px; }
@@ -256,8 +264,8 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 <header class="top" id="top">
   <div class="brand">
-    <h1>Multiple Methods Review</h1>
-    <span>Lesson 2.7 · Pick the best method, then solve.</span>
+    <h1>Quadratic Word Problems</h1>
+    <span>Write the equation, pick a method, solve and interpret.</span>
   </div>
   <nav class="dots" id="dots" aria-label="Questions"></nav>
   <div class="top-actions">
@@ -299,14 +307,14 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 </div>
 
 <script>
-
 "use strict";
 /* ---------- Math rendering ---------- */
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function texFallback(t) {
   let s = t;
   for (let i = 0; i < 4; i++) s = s.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, "($1)/($2)").replace(/\\sqrt\{([^{}]*)\}/g, "√($1)");
-  return s.replace(/\\pm/g, "±").replace(/\\cdot/g, "·").replace(/\\quad|\\;|\\,/g, " ").replace(/\\text\{([^}]*)\}/g, " $1 ")
+  return s.replace(/\\pm/g, "±").replace(/\\cdot/g, "·").replace(/\\times/g, "×").replace(/\\approx/g, "≈").replace(/\\Rightarrow/g, "⇒")
+    .replace(/\\quad|\\qquad|\\;|\\,/g, " ").replace(/\\text\{([^}]*)\}/g, "$1")
     .replace(/\\left|\\right/g, "").replace(/\^2/g, "²").replace(/[{}]/g, "");
 }
 function M(tex, display) {
@@ -324,6 +332,11 @@ const nz = (a, b) => { let v; do { v = ri(a, b); } while (v === 0); return v; };
 const isSq = n => n >= 0 && Number.isInteger(Math.sqrt(n));
 function simpRad(n) { for (let k = Math.floor(Math.sqrt(n)); k > 1; k--) if (n % (k * k) === 0) return [k, n / (k * k)]; return [1, n]; }
 const fmt = n => (n < 0 ? "−" + (-n) : "" + n);
+const isInt = x => Math.abs(x - Math.round(x)) < 1e-9;
+const d2 = x => (isInt(x) ? "" + Math.round(x) : x.toFixed(2)); /* value rounded to hundredths, as TeX/plain */
+const ap = x => (isInt(x) ? "= " : "\\approx ") + d2(x);   /* "= 60" or "≈ 1.77" in TeX */
+const apT = x => (isInt(x) ? "" : "about ") + d2(x);        /* plain words */
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 /* ---------- TeX builders ---------- */
 function coefTerm(c, v, first) {
@@ -333,8 +346,6 @@ function coefTerm(c, v, first) {
 }
 function poly(cs, v = "x") { const vars = [v + "^2", v, ""]; let out = ""; cs.forEach((c, i) => { out += coefTerm(c, vars[i], out === ""); }); return out || "0"; }
 const binom = (p, q, v = "x") => poly([0, p, q], v);
-const sgn = n => (n < 0 ? ` - ${-n}` : ` + ${n}`);
-const lead = (a, body) => (a === 1 ? "" : a === -1 ? "-" : a) + body;
 function frac(n, d) {
   if (d < 0) { n = -n; d = -d; }
   const g = gcd(n, d) || 1; n /= g; d /= g;
@@ -342,197 +353,289 @@ function frac(n, d) {
   return (n < 0 ? "-" : "") + `\\frac{${Math.abs(n)}}{${d}}`;
 }
 const rad = (s, t) => (t === 1 ? "" + s : (s === 1 ? "" : s) + `\\sqrt{${t}}`);
-const irad = (s, t) => (s === 1 ? "" : s) + "i" + (t === 1 ? "" : `\\sqrt{${t}}`);
-const plainRad = (s, t, imag) => ((s === 1 && (imag || t > 1)) ? "" : s) + (imag ? "i" : "") + (t > 1 ? "√" + t : "");
+function ratRad(s, t, d) { const g = gcd(s, d); s /= g; d /= g; const num = rad(s, t); return d === 1 ? num : `\\frac{${num}}{${d}}`; }
 const OR = "\\quad\\text{or}\\quad ";
-const moveText = (c, what) => `${c > 0 ? "Subtract" : "Add"} ${Math.abs(c)} ${c > 0 ? "from" : "to"} both sides${what ? " " + what : ""}.`;
+const T = s => `\\text{${s}}`;
 
-/* √m for a nonzero integer m, simplified, with i when m is negative */
-function sqrtOf(m) {
-  const n = Math.abs(m), [s, t] = simpRad(n), neg = m < 0;
-  let note = null;
-  if (neg) note = `A negative under the square root means the solutions are imaginary: √(−${n}) = ${t === 1 || s > 1 ? `i√${n} = ` : ""}${plainRad(s, t, true)}.`;
-  else if (t === 1) note = `Simplify: √${n} = ${s}.`;
-  else if (s > 1) note = `Simplify the radical: √${n} = ${s}√${t}.`;
-  return { tex: neg ? irad(s, t) : rad(s, t), note, neg, mag: Math.sqrt(n) };
-}
-
-/* ---------- Methods & skills (from Lesson 2.7 notes) ---------- */
+/* ---------- Methods & skills ---------- */
 const METHODS = [
   { id: "factor", label: "Factoring", sub: "Set = 0; factors of a·c that add to b" },
-  { id: "sqrt", label: "Taking square roots", sub: "No b term: isolate x² or (x + #)²" },
-  { id: "formula", label: "Quadratic formula", sub: "Works for ANY quadratic, usually last resort" },
-  { id: "graph", label: "Graphing", sub: "Solutions = x-intercepts (Desmos)" },
+  { id: "sqrt", label: "Taking square roots", sub: "No b term: isolate t² or (x + #)²" },
+  { id: "formula", label: "Quadratic formula", sub: "Works for ANY quadratic" },
+  { id: "graph", label: "Graphing", sub: "Read the key points (Desmos)" },
 ];
 const SKILLS = {
-  factor: { name: "Factoring", tip: "Set the equation equal to zero and take out any GCF. Then look for factors of a·c that add to b." },
-  sqrt: { name: "Taking square roots (x²)", tip: "With no b term, isolate x², take ± the square root of both sides, then simplify." },
-  binom: { name: "Taking square roots ((x + #)²)", tip: "Isolate the squared binomial, take ± the square root, then add or subtract the number. Don't expand!" },
-  formula: { name: "Quadratic formula", tip: "Set the equation equal to zero, find b² − 4ac, then simplify the radical and reduce the fraction." },
-  complex: { name: "Imaginary solutions", tip: "A negative under the square root means imaginary solutions: √(−9) = 3i and √(−68) = 2i√17." },
+  drop: { name: "Falling objects", tip: "Set h(t) equal to the ending height (0 for the ground). There's no t term, so isolate t² and take the square root." },
+  projectile: { name: "Thrown or hit objects", tip: "Set h(t) = 0 for the ground. There's a t term and it usually won't factor, so use the quadratic formula." },
+  fence: { name: "Fencing against a wall", tip: "Only three sides need fencing. If w is each side touching the wall, the other side is (total − 2w), so Area = w(total − 2w)." },
+  triangle: { name: "Right triangles", tip: "If one leg is x, the other is (sum − x). Use the Pythagorean theorem: x² + (sum − x)² = hypotenuse²." },
+  numbers: { name: "Number problems", tip: "If one number is x, the other is (sum − x). Their product gives x(sum − x) = product." },
+  rect: { name: "Rectangle dimensions", tip: "Write the length in terms of the width, then use Area = width × length." },
+  interpret: { name: "Interpreting solutions", tip: "Check each solution in context. Time and lengths can't be negative, so cross out answers that don't make sense." },
 };
 
 /* ---------- Question builders ---------- */
-/* Factoring: k(px − q)(rx − s) = 0, optionally shown with a constant `rhs` on the right */
-function qFactor({ k = 1, p = 1, q, r = 1, s, v = "x", rhs = 0, alsoOk = [], src }) {
-  const a1 = p * r, b1 = -(p * s + q * r), c1 = q * s, A = k * a1, B = k * b1, C = k * c1, steps = [];
-  if (rhs) steps.push({ t: `Make sure the equation equals zero. ${moveText(rhs)}`, m: `${poly([A, B, C], v)} = 0` });
-  if (k !== 1) steps.push({ t: `Factor out the GCF, ${k}.`, m: `${k}(${poly([a1, b1, c1], v)}) = 0` });
-  const wrap = inner => (k !== 1 ? `${k}${inner}` : inner);
-  const factored = `(${binom(p, -q, v)})(${binom(r, -s, v)})`;
-  if (a1 === 1) {
-    steps.push({ t: `Find two numbers that multiply to ${fmt(c1)} and add to ${fmt(b1)}: ${fmt(-q)} and ${fmt(-s)}.`, m: `${wrap(factored)} = 0` });
+/* Falling object: h(t) = −16t² + H, find when h = k */
+function qDrop({ H, k = 0, obj, text, src }) {
+  const diff = H - k, root = Math.sqrt(diff / 16), [s, t] = simpRad(diff);
+  const eq = `-16t^2 + ${H} = ${k}`;
+  const choices = shuffle([
+    { tex: eq, ok: true },
+    k ? { tex: `-16t^2 + ${H} = 0`, why: `Setting h(t) = 0 finds when it reaches the ground. Here it stops ${k} feet up, so set h(t) = ${k}.` }
+      : { tex: `-16t^2 + ${H} = ${H}`, why: `h = ${H} is the starting height (at t = 0). The ground is where h = 0.` },
+    { tex: `16t^2 + ${H} = ${k}`, why: "Keep the −16 from the model. Gravity pulls the object down, so the t² term is negative." },
+    k ? { tex: `-16t^2 + ${k} = ${H}`, why: `The starting height, ${H}, stays in the function. The height you're looking for, ${k}, goes on the other side.` }
+      : { tex: `-16t^2 = ${H}`, why: `Moving ${H} to the other side makes it −${H}, not ${H}.` },
+  ]);
+  const steps = [
+    { t: `Let t = time in seconds. Set the height h(t) equal to ${k ? k + " feet" : "0 (the ground)"}.`, m: eq },
+    { t: `Subtract ${H} from both sides.`, m: `-16t^2 = ${k - H}` },
+    { t: "Divide both sides by −16.", m: `t^2 = ${frac(diff, 16)}` },
+    { t: "Take the square root of both sides. Remember ±.", m: `t = \\pm\\sqrt{${frac(diff, 16)}} = \\pm ${ratRad(s, t, 4)} ${ap(root).replace(/^= /, "= \\pm ").replace(/^\\approx /, "\\approx \\pm ")}` },
+    { t: "Interpret: time can't be negative, so reject the negative answer.", m: `t ${ap(root)}${T(" seconds")}` },
+  ];
+  return {
+    skill: "drop", src, text, choices, best: "sqrt", alsoOk: [],
+    eqHint: k ? `The ${obj} stops when it is ${k} feet above the ground, not at the ground. What should h(t) equal?` : "The ground is where the height is 0.",
+    why: "There's no t term (no b term), so isolate t² and take the square root.",
+    fields: [{ label: "t", unit: "seconds" }], sets: [[root]], reject: [-root], rejectMsg: "Time can't be negative. Keep only the positive solution.",
+    ans: `t ${ap(root)}${T(" seconds")}`,
+    interp: `It takes ${apT(root)} seconds for the ${obj} to ${k ? `reach a height of ${k} feet` : "hit the ground"}.`,
+    graph: { f: [-16, 0, H], level: k, lo: 0, hi: Math.sqrt(H / 16) * 1.12, xl: "t (seconds)", yl: "h (feet)" }, steps,
+  };
+}
+/* Thrown / hit object: h(t) = −16t² + bt + c, find when h = 0 */
+function qProj({ b, c, obj, ground = "the ground", text, src }) {
+  const a = -16, D = b * b - 4 * a * c, sq = Math.sqrt(D), r1 = (-b + sq) / (2 * a), r2 = (-b - sq) / (2 * a);
+  const pos = Math.max(r1, r2), neg = Math.min(r1, r2), eq = `${poly([a, b, c], "t")} = 0`;
+  const choices = shuffle([
+    { tex: eq, ok: true },
+    { tex: `${poly([a, b, c], "t")} = ${c}`, why: `h = ${c} is the starting height (at t = 0). Touching ${ground} means h = 0.` },
+    { tex: `${poly([a, b, 0], "t")} = 0`, why: `The starting height, ${c}, is part of the model. Don't drop it.` },
+    { tex: `${poly([16, b, c], "t")} = 0`, why: "Keep the −16 from the model. Gravity pulls the object down." },
+  ]);
+  const steps = [
+    { t: `Let t = time in seconds. The ${obj} touches ${ground} when h(t) = 0.`, m: eq },
+    { t: `a = −16, b = ${fmt(b)}, c = ${fmt(c)}. Find the discriminant.`, m: `b^2 - 4ac = (${b})^2 - 4(-16)(${c}) = ${D}` },
+    { t: "Substitute into the quadratic formula.", m: `t = \\frac{${-b} \\pm \\sqrt{${D}}}{-32}` },
+    { t: "Find both decimal values.", m: `t ${ap(pos)}${OR}t ${ap(neg)}` },
+    { t: "Interpret: time can't be negative, so reject the negative answer.", m: `t ${ap(pos)}${T(" seconds")}` },
+  ];
+  return {
+    skill: "projectile", src, text, choices, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
+    eqHint: `Touching ${ground} means the height is 0.`,
+    why: `There's a t term, and b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`,
+    fields: [{ label: "t", unit: "seconds" }], sets: [[pos]], reject: [neg], rejectMsg: "Time can't be negative. Keep only the positive solution.",
+    ans: `t ${ap(pos)}${T(" seconds")}`,
+    interp: `The ${obj} reaches ${ground} after ${apT(pos)} seconds${obj === "ball" && /court/.test(ground) ? ", so the other team has about that much time to hit it" : ""}.`,
+    graph: { f: [a, b, c], level: 0, lo: 0, hi: pos * 1.12, xl: "t (seconds)", yl: "h (feet)" }, steps,
+  };
+}
+/* Fence against a wall: w(F − 2w) = A */
+function qFence({ F, A, unit = "m", place = "garden", wall = "fence", text, src }) {
+  const D = F * F - 8 * A, sq = Math.sqrt(D), w1 = (F + sq) / 4, w2 = (F - sq) / 4, l1 = F - 2 * w1, l2 = F - 2 * w2;
+  const eq = `w(${F} - 2w) = ${A}`;
+  const choices = shuffle([
+    { tex: eq, ok: true },
+    { tex: `w(${F / 2} - w) = ${A}`, why: `That fences all four sides. The existing ${wall} is the fourth side, so the ${F} ${unit} only covers three sides: w + w + (${F} − 2w).` },
+    { tex: `w(${F} - w) = ${A}`, why: `Two sides of length w need fencing, so the third side is ${F} − 2w, not ${F} − w.` },
+    { tex: `2w + (${F} - 2w) = ${A}`, why: `That adds up the fencing. The ${A} ${unit}² is an area, and area = width × length.` },
+  ]);
+  const steps = [
+    { t: `Let w = each side touching the ${wall} (there are 2) and ${F} − 2w = the side parallel to the ${wall}. Area = width × length.`, m: eq },
+    { t: "Distribute, then set the equation equal to zero.", m: `${poly([-2, F, 0], "w")} = ${A} \\;\\Rightarrow\\; ${poly([2, -F, A], "w")} = 0` },
+    { t: `a = 2, b = ${fmt(-F)}, c = ${A}. Find the discriminant.`, m: `b^2 - 4ac = (${-F})^2 - 4(2)(${A}) = ${D}` },
+    { t: "Substitute into the quadratic formula.", m: `w = \\frac{${F} \\pm \\sqrt{${D}}}{4}\\quad w ${ap(w1)}${OR}w ${ap(w2)}` },
+    { t: `Find the other side for each width: ${F} − 2w.`, m: `${F} - 2(${d2(w1)}) ${ap(l1)}\\qquad ${F} - 2(${d2(w2)}) ${ap(l2)}` },
+    { t: "Interpret: both widths are positive and both lengths are positive, so both gardens work.", m: `${d2(w1)}${T(" " + unit)} \\times ${d2(l1)}${T(" " + unit)}${OR}${d2(w2)}${T(" " + unit)} \\times ${d2(l2)}${T(" " + unit)}` },
+  ];
+  return {
+    skill: "fence", src, text, choices, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
+    eqHint: `Draw it! The ${wall} is one side, so the fencing covers only three sides: two widths (w) and one length.`,
+    why: `After you expand and set it equal to zero, b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`,
+    fields: [{ label: "w", unit: `${unit} (each side touching the ${wall})` }, { label: "l", unit: `${unit} (side parallel to the ${wall})` }],
+    sets: [[w1, l1], [w2, l2]], reject: [], rejectMsg: "",
+    ans: `${d2(w1)} \\times ${d2(l1)}${T(" " + unit)}${OR}${d2(w2)} \\times ${d2(l2)}${T(" " + unit)}`,
+    interp: `There are two possible ${place}s: ${apT(w1)} ${unit} by ${d2(l1)} ${unit}, or ${apT(w2)} ${unit} by ${d2(l2)} ${unit}. Both use ${F} ${unit} of fencing and have an area of ${A} ${unit}². Either answer is correct.`,
+    graph: { f: [-2, F, 0], level: A, lo: 0, hi: F / 2, xl: `w (${unit})`, yl: `Area (${unit}²)` }, steps,
+  };
+}
+/* Right triangle: legs add to S, hypotenuse c */
+function qTri({ S, c, unit = "in", text, src }) {
+  const B = -2 * S, C = S * S - c * c, D = B * B - 8 * C, sq = Math.sqrt(D), x1 = (-B + sq) / 4, x2 = (-B - sq) / 4;
+  const eq = `x^2 + (${S} - x)^2 = ${c}^2`;
+  const choices = shuffle([
+    { tex: eq, ok: true },
+    { tex: `x^2 + (${S} - x)^2 = ${c}`, why: "The Pythagorean theorem squares the hypotenuse too: a² + b² = c²." },
+    { tex: `x^2 + ${c}^2 = (${S} - x)^2`, why: "The hypotenuse is the longest side, so it goes by itself: leg² + leg² = hypotenuse²." },
+    { tex: `x(${S} - x) = ${c}^2`, why: "Use the Pythagorean theorem (a² + b² = c²), not a product of the legs." },
+  ]);
+  const steps = [
+    { t: `Let x = one leg. The legs add to ${S}, so the other leg is ${S} − x. Use a² + b² = c².`, m: eq },
+    { t: `Expand (${S} − x)² as (${S} − x)(${S} − x).`, m: `x^2 + ${S * S} - ${2 * S}x + x^2 = ${c * c}` },
+    { t: "Combine like terms and set the equation equal to zero.", m: `${poly([2, B, C], "x")} = 0` },
+    { t: `a = 2, b = ${fmt(B)}, c = ${fmt(C)}. Find the discriminant.`, m: `b^2 - 4ac = (${B})^2 - 4(2)(${C}) = ${D}` },
+    { t: "Substitute into the quadratic formula.", m: `x = \\frac{${-B} \\pm \\sqrt{${D}}}{4}\\quad x ${ap(x1)}${OR}x ${ap(x2)}` },
+    { t: `Interpret: if one leg is ${d2(x1)}, the other is ${S} − ${d2(x1)} = ${d2(x2)}. The two solutions are the two legs.`, m: `${d2(x1)}${T(" " + unit)}${T(" and ")}${d2(x2)}${T(" " + unit)}` },
+  ];
+  return {
+    skill: "triangle", src, text, choices, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
+    eqHint: `Call one leg x. Since the legs add to ${S}, what is the other leg? Then use a² + b² = c².`,
+    why: `After you expand and set it equal to zero, b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`,
+    fields: [{ label: "Leg 1", unit }, { label: "Leg 2", unit }], sets: [[x1, x2], [x2, x1]], reject: [], rejectMsg: "",
+    ans: `${d2(x1)}${T(" " + unit + " and ")}${d2(x2)}${T(" " + unit)}`,
+    interp: `The legs are ${apT(x1)} ${unit} and ${apT(x2)} ${unit}. Check: they add to ${S}, and ${d2(x1)}² + ${d2(x2)}² ≈ ${c * c} = ${c}².`,
+    graph: { f: [2, B, C], level: 0, lo: 0, hi: S, xl: "x (leg length)", yl: "y" }, steps,
+  };
+}
+/* Two numbers: sum S = m + n, product P = mn */
+function qNum({ m, n, text, src }) {
+  const S = m + n, P = m * n, eq = `x(${S} - x) = ${P}`;
+  const choices = shuffle([
+    { tex: eq, ok: true },
+    { tex: `x + (${S} - x) = ${P}`, why: `That's the sum again. "Product" means multiply: x(${S} − x).` },
+    { tex: `x(${P} - x) = ${S}`, why: `The numbers add to ${S}, so the second number is ${S} − x, and their product is ${P}.` },
+    { tex: `x(x + ${S}) = ${P}`, why: `If the numbers add to ${S} and one is x, the other is ${S} − x, not x + ${S}.` },
+  ]);
+  const steps = [
+    { t: `Let x = the first number. They add to ${S}, so the second number is ${S} − x.`, m: eq },
+    { t: "Distribute, then move everything to one side so the x² term is positive.", m: `${S}x - x^2 = ${P} \\;\\Rightarrow\\; ${poly([1, -S, P], "x")} = 0` },
+    { t: `Find two numbers that multiply to ${P} and add to ${fmt(-S)}: ${fmt(-m)} and ${fmt(-n)}.`, m: `(x - ${m})(x - ${n}) = 0` },
+    { t: "Set each factor equal to zero.", m: `x = ${m}${OR}x = ${n}` },
+    { t: `Interpret: if x = ${m}, the other number is ${S} − ${m} = ${n} (and the reverse). Either way, the numbers are ${m} and ${n}.`, m: `${m}${T(" and ")}${n}` },
+  ];
+  return {
+    skill: "numbers", src, text, choices, best: "factor", alsoOk: [],
+    eqHint: `Call the first number x. If they add to ${S}, the second number is ${S} − x. Now write their product.`,
+    why: `Set it equal to zero: x² − ${S}x + ${P} = 0. Two numbers multiply to ${P} and add to −${S}, so it factors.`,
+    fields: [{ label: "First number", unit: "" }, { label: "Second number", unit: "" }], sets: [[m, n], [n, m]], reject: [], rejectMsg: "",
+    ans: `${m}${T(" and ")}${n}`,
+    interp: `The two numbers are ${m} and ${n}. Check: ${m} + ${n} = ${S} and ${m} × ${n} = ${P}.`,
+    graph: { f: [-1, S, 0], level: P, lo: 0, hi: S, xl: "x (first number)", yl: "product" }, steps,
+  };
+}
+/* Rectangle: length = k·w + d, area A = w·length */
+function qRect({ k, d, w0, unit = "yards", thing = "field", text, src }) {
+  const l0 = k * w0 + d, A = w0 * l0, lw = binom(k, d, "w"), eq = `w(${lw}) = ${A}`, neg = -l0 / k;
+  const kWord = k === 2 ? "twice" : `${k} times`, phrase = `${Math.abs(d)} ${d < 0 ? "fewer" : "more"} than ${kWord} its width`;
+  const choices = shuffle([
+    { tex: eq, ok: true },
+    { tex: `w(${binom(k, -d, "w")}) = ${A}`, why: `"${phrase}" means ${k}w ${d < 0 ? "−" : "+"} ${Math.abs(d)}.` },
+    { tex: `2w + 2(${lw}) = ${A}`, why: `That's the perimeter. The ${A} is an area, and area = width × length.` },
+    { tex: `w + (${lw}) = ${A}`, why: "Area means multiply width × length, not add them." },
+  ]);
+  const steps = [
+    { t: `Let w = the width. The length is ${phrase}: ${k}w ${d < 0 ? "−" : "+"} ${Math.abs(d)}. Area = width × length.`, m: eq },
+    { t: "Distribute, then set the equation equal to zero.", m: `${poly([k, d, -A], "w")} = 0` },
+  ];
+  if (d % k === 0) {
+    steps.push({ t: `Factor out the GCF, ${k}.`, m: `${k}(${poly([1, d / k, -A / k], "w")}) = 0` });
+    steps.push({ t: `Find two numbers that multiply to ${fmt(-A / k)} and add to ${fmt(d / k)}: ${fmt(-w0)} and ${fmt(l0 / k)}.`, m: `${k}(w - ${w0})(w + ${l0 / k}) = 0` });
   } else {
-    const m1 = -p * s, m2 = -q * r;
-    const split = `${coefTerm(a1, v + "^2", true)}${coefTerm(m1, v, false)}${coefTerm(m2, v, false)}${coefTerm(c1, "", false)}`;
-    steps.push({ t: `a·c = ${a1}·${fmt(c1)} = ${fmt(a1 * c1)}. Two numbers that multiply to ${fmt(a1 * c1)} and add to ${fmt(b1)}: ${fmt(m1)} and ${fmt(m2)}. Split the middle term.`, m: `${k !== 1 ? `${k}(${split})` : split} = 0` });
-    steps.push({ t: "Factor by grouping.", m: `${wrap(factored)} = 0` });
+    steps.push({ t: `Factor with the a·c method: a·c = ${fmt(-k * A)}; ${fmt(l0)} and ${fmt(-k * w0)} multiply to that and add to ${fmt(d)}.`, m: `(w - ${w0})(${k}w + ${l0}) = 0` });
   }
-  steps.push({ t: `Set each factor${k !== 1 ? ` with a ${v}` : ""} equal to zero and solve.${k !== 1 ? ` (${k} ≠ 0, so it gives no solution.)` : ""}`, m: `${v} = ${frac(q, p)}${OR}${v} = ${frac(s, r)}` });
-  const why = (rhs ? "First set it equal to zero. " : "") + (k !== 1 ? `Every term shares a factor of ${k}, so take that out first. ` : "") +
-    (a1 === 1 ? `Then two numbers multiply to ${fmt(c1)} and add to ${fmt(b1)}, so it factors.` : `Then a·c = ${fmt(a1 * c1)} has a factor pair that adds to ${fmt(b1)}, so it factors.`);
-  return { skill: "factor", v, src, eq: `${poly([A, B, C + rhs], v)} = ${rhs}`, std: [A, B, C], best: "factor", alsoOk,
-    roots: [[q / p, 0], [s / r, 0]], why, ans: `${v} = ${frac(q, p)}, \\; ${v} = ${frac(s, r)}`, steps };
-}
-/* Square roots: a·v² + c = a·m + c */
-function qSqrt({ a = 1, c = 0, m, v = "x", src }) {
-  const ax = lead(a, v + "^2"), steps = [], total = a * m + c;
-  if (c) steps.push({ t: moveText(c), m: `${ax} = ${a * m}` });
-  if (a !== 1) steps.push({ t: `Divide both sides by ${fmt(a)}.`, m: `${v}^2 = ${m}` });
-  steps.push({ t: "Take the square root of both sides. Remember ±.", m: `${v} = \\pm\\sqrt{${m}}` });
-  const R = sqrtOf(m);
-  if (R.note) steps.push({ t: R.note, m: `${v} = \\pm ${R.tex}` });
-  return { skill: "sqrt", complex: R.neg, v, src, eq: `${ax}${c ? sgn(c) : ""} = ${total}`, std: [a, 0, c - total], best: "sqrt",
-    alsoOk: (!R.neg && isSq(m)) ? ["factor"] : [],
-    roots: R.neg ? [[0, R.mag], [0, -R.mag]] : [[R.mag, 0], [-R.mag, 0]],
-    why: `There's no b term (no ${v} term). Get ${v}² by itself with only a constant on the other side, then take the square root of both sides.`,
-    ans: `${v} = \\pm ${R.tex}`, steps };
-}
-/* Square roots with a squared binomial: a(v + h)² + k = a·m + k */
-function qBinom({ a = 1, h, k = 0, m, v = "x", src }) {
-  const vh = binom(1, h, v), sq = `(${vh})^2`, lhs = lead(a, sq), center = -h, steps = [];
-  if (k) steps.push({ t: moveText(k), m: `${lhs} = ${a * m}` });
-  if (a !== 1) steps.push({ t: `Divide both sides by ${fmt(a)}.`, m: `${sq} = ${m}` });
-  steps.push({ t: "Take the square root of both sides. Remember ±.", m: `${vh} = \\pm\\sqrt{${m}}` });
-  const R = sqrtOf(m);
-  if (R.note) steps.push({ t: R.note, m: `${vh} = \\pm ${R.tex}` });
-  steps.push({ t: `${h > 0 ? "Subtract" : "Add"} ${Math.abs(h)} ${h > 0 ? "from" : "to"} both sides.`, m: `${v} = ${center} \\pm ${R.tex}` });
-  let ans = `${v} = ${center} \\pm ${R.tex}`, roots;
-  if (R.neg) roots = [[center, R.mag], [center, -R.mag]];
-  else {
-    roots = [[center + R.mag, 0], [center - R.mag, 0]];
-    if (isSq(m)) { const n = R.mag; steps.push({ t: "Find both answers.", m: `${v} = ${center + n}${OR}${v} = ${center - n}` }); ans = `${v} = ${center + n}, \\; ${v} = ${center - n}`; }
-  }
-  return { skill: "binom", complex: R.neg, v, src, eq: `${lhs}${k ? sgn(k) : ""} = ${a * m + k}`, std: [a, 2 * a * h, a * h * h - a * m],
-    best: "sqrt", alsoOk: [], roots,
-    why: `The ${v} is inside a squared binomial with only a constant on the other side. Isolate the square and take the square root. There's no need to expand it.`,
-    ans, steps };
-}
-/* Quadratic formula: standard form a·v² + b·v + c = 0, optionally shown with a constant `rhs` on the right */
-function qFormula({ a, b, c, rhs = 0, v = "x", src, alsoOk = [] }) {
-  const D = b * b - 4 * a * c, steps = [];
-  if (rhs) steps.push({ t: `Make sure the equation equals zero. ${moveText(rhs)}`, m: `${poly([a, b, c], v)} = 0` });
-  steps.push({ t: `a = ${a}, b = ${fmt(b)}, c = ${fmt(c)}. Find the discriminant.`, m: `b^2 - 4ac = (${b})^2 - 4(${a})(${c}) = ${D}` });
-  steps.push({ t: "Substitute into the quadratic formula.", m: `${v} = \\frac{${-b} \\pm \\sqrt{${D}}}{${2 * a}}` });
-  const n = Math.abs(D), [s, t] = simpRad(n), neg = D < 0, radTex = S => (neg ? irad(S, t) : rad(S, t));
-  if (neg) steps.push({ t: `The discriminant is negative, so the solutions are imaginary: √(−${n}) = ${s > 1 ? `i√${n} = ` : ""}${plainRad(s, t, true)}.`, m: `${v} = \\frac{${-b} \\pm ${radTex(s)}}{${2 * a}}` });
-  else if (s > 1) steps.push({ t: `Simplify the radical: √${n} = ${s}√${t}.`, m: `${v} = \\frac{${-b} \\pm ${radTex(s)}}{${2 * a}}` });
-  const g = gcd(gcd(b, s), 2 * a), B = -b / g, S = s / g, A = 2 * a / g;
-  const num = `${B === 0 ? "" : B + " "}\\pm ${radTex(S)}`, final = A === 1 ? num : `\\frac{${num}}{${A}}`;
-  if (g > 1) steps.push({ t: `Every term shares a factor of ${g}. Divide it out.`, m: `${v} = ${final}` });
-  const re = -b / (2 * a), off = Math.sqrt(n) / (2 * a);
-  return { skill: "formula", complex: neg, v, src, eq: `${poly([a, b, c + rhs], v)} = ${rhs}`, std: [a, b, c], best: "formula", alsoOk,
-    roots: neg ? [[re, off], [re, -off]] : [[re + off, 0], [re - off, 0]],
-    why: (rhs ? "First set it equal to zero. " : "") + (neg
-      ? `b² − 4ac = ${D} is negative, so there are no real solutions: it won't factor and the graph has no x-intercepts. The quadratic formula works for ANY quadratic.`
-      : `b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`),
-    ans: `${v} = ${final}`, steps };
+  steps.push({ t: "Set each factor equal to zero.", m: `w = ${w0}${OR}w = ${frac(-l0, k)}` });
+  steps.push({ t: `Interpret: a width can't be negative, so w = ${w0}. The length is ${k}(${w0}) ${d < 0 ? "−" : "+"} ${Math.abs(d)} = ${l0}.`, m: `${w0}${T(" " + unit + " by ")}${l0}${T(" " + unit)}` });
+  return {
+    skill: "rect", src, text, choices, best: "factor", alsoOk: ["formula"],
+    eqHint: `Let w be the width. Write the length using w, then use Area = width × length.`,
+    why: `Set it equal to zero${d % k === 0 ? ` and factor out the GCF, ${k}` : ""}. It factors, so factoring works. With numbers this big, the quadratic formula is a fine choice too.`,
+    fields: [{ label: "width", unit }, { label: "length", unit }], sets: [[w0, l0]], reject: [neg],
+    rejectMsg: "A width can't be negative. Reject the negative solution, then find the length from the positive width.",
+    ans: `${w0}${T(" " + unit + " by ")}${l0}${T(" " + unit)}`,
+    interp: `The ${thing} is ${w0} ${unit} wide and ${l0} ${unit} long. Check: ${w0} × ${l0} = ${A.toLocaleString("en-US")}.`,
+    graph: { f: [k, d, 0], level: A, lo: 0, hi: w0 * 1.3, xl: `w (${unit})`, yl: "Area" }, steps,
+  };
 }
 
-/* ---------- Random generators for extra practice ---------- */
-const VARS = ["x", "x", "x", "a", "m", "p"];
-function randFormula(wantNeg) {
-  for (;;) {
-    const a = pick([1, 1, 2, 3, 4, 5]), b = nz(-9, 9), c = nz(-12, 12), D = b * b - 4 * a * c;
-    if (wantNeg ? D >= 0 : (D <= 0 || isSq(D))) continue;
-    if (gcd(gcd(a, b), c) !== 1) continue;
-    return qFormula({ a, b, c, rhs: Math.random() < 0.35 ? nz(-10, 10) : 0, v: pick(VARS) });
-  }
-}
-const negM = () => -pick([1, 4, 9, 16, 25, 36, 2, 3, 5, 6, 7, 8, 12, 18, 20]);
-const GEN = {
-  factor() {
-    for (;;) {
-      const one = Math.random() < 0.5, k = pick([1, 1, 1, 2, 3, 4, 5]);
-      const p = one ? 1 : pick([2, 3, 4, 5]), r = one ? 1 : pick([1, 1, 2, 3]), q = nz(-8, 8), s = nz(-8, 8);
-      if (gcd(p, q) !== 1 || gcd(r, s) !== 1) continue;
-      const a1 = p * r, b1 = -(p * s + q * r), c1 = q * s;
-      if (b1 === 0 || q * r === s * p || gcd(gcd(a1, b1), c1) !== 1 || a1 * k > 20) continue;
-      return qFactor({ k, p, q, r, s, rhs: Math.random() < 0.3 ? nz(-12, 12) : 0, v: pick(VARS) });
-    }
-  },
-  sqrt() {
-    const kind = pick(["sq", "rad", "rad", "neg"]);
-    const m = kind === "sq" ? ri(2, 10) ** 2 : kind === "rad" ? ri(1, 3) ** 2 * pick([2, 3, 5, 6, 7, 10]) : negM();
-    return qSqrt({ a: pick([1, 1, 2, 3, 4, 5]), c: pick([0, nz(-20, 20)]), m, v: pick(VARS) });
-  },
-  binom() {
-    const kind = pick(["sq", "sq", "rad", "neg"]);
-    const m = kind === "sq" ? ri(1, 9) ** 2 : kind === "rad" ? pick([1, 1, 2, 3]) ** 2 * pick([2, 3, 5, 6, 7, 10, 11]) : negM();
-    return qBinom({ a: pick([1, 1, 1, 2, 3, -2, -3]), h: nz(-9, 9), k: pick([0, nz(-15, 15)]), m, v: pick(VARS) });
-  },
-  formula() { return randFormula(Math.random() < 0.3); },
-  complex() {
-    return pick([
-      () => randFormula(true),
-      () => randFormula(true),
-      () => qSqrt({ a: pick([1, 2, 3, 4]), c: pick([0, nz(-15, 15)]), m: negM(), v: pick(VARS) }),
-      () => qBinom({ a: pick([1, 1, 2, -2, -3]), h: nz(-9, 9), k: pick([0, nz(-15, 15)]), m: negM(), v: pick(VARS) }),
-    ])();
-  },
-};
-
-/* ---------- Starting set: every example and practice problem from Lesson 2.7 ---------- */
+/* ---------- Starting set: problems A–G from the worksheet ---------- */
 function startingSet() {
   return [
-    qFactor({ q: 2, s: 12, src: "Notes example" }),                                // x² − 14x + 24 = 0
-    qFactor({ p: 2, q: -1, r: 3, s: 5, src: "Notes example" }),                    // 6x² − 7x − 5 = 0
-    qSqrt({ a: 3, c: -21, m: 7, src: "Notes example" }),                           // 3x² − 21 = 0
-    qBinom({ h: -5, k: -3, m: 25, src: "Notes example" }),                         // (x − 5)² − 3 = 22
-    qFormula({ a: 3, b: -5, c: 9, rhs: -4, src: "Notes example" }),                // 3x² − 5x + 5 = −4
-    qFormula({ a: 2, b: 6, c: 13, src: "Notes example" }),                         // 2x² + 6x + 13 = 0
-    qFormula({ a: 1, b: 4, c: -8, src: "Notes: graphing example" }),               // x² + 4x − 8 = 0
-    qFactor({ p: 4, q: -5, r: 1, s: 5, src: "Practice A" }),                       // 4x² − 15x − 25 = 0
-    qFactor({ k: 4, q: -2, s: -9, v: "a", src: "Practice B" }),                    // 4a² + 44a + 72 = 0
-    qSqrt({ a: 3, c: -14, m: 3, src: "Practice C" }),                              // 3x² − 14 = −5
-    qBinom({ a: -3, h: 2, m: -9, src: "Practice D" }),                             // −3(x + 2)² = 27
-    qFactor({ p: 2, q: 5, r: 1, s: -4, alsoOk: ["formula"], src: "Practice E" }),  // 2x² + 3x − 20 = 0
-    qFormula({ a: 2, b: -7, c: -3, rhs: -10, v: "m", src: "Practice F" }),         // 2m² − 7m − 13 = −10
-    qFormula({ a: 1, b: 14, c: -38, v: "p", src: "Practice G" }),                  // p² + 14p − 38 = 0
-    qFactor({ k: 10, q: -2, s: -4, src: "Practice H" }),                           // 10x² + 60x + 80 = 0
+    qDrop({ H: 50, obj: "book", src: "Problem A",
+      text: "Suppose I hold a Biology book out the window that is 50 feet off the ground. The function that models its height, h, over time, t, is h(t) = −16t² + 50. How long would it take to hit the ground?" }),
+    qDrop({ H: 50, k: 5, obj: "book", src: "Problem B",
+      text: "Suppose the same book is dropped, but it hits the roof of a 5-foot-tall car. How long would it take until the book hits the car? (The model is still h(t) = −16t² + 50.)" }),
+    qProj({ b: -55, c: 12, obj: "ball", ground: "the court", src: "Problem C",
+      text: "In a volleyball game, a player on one team spikes the ball over the net when the ball is 12 feet above the court. The equation that models the ball's height, h, after t seconds is h(t) = −16t² − 55t + 12. Players on the opposing team must hit the ball back over the net before it touches the court. How much time do the opposing players have to hit the spiked ball?" }),
+    qFence({ F: 40, A: 125, unit: "m", src: "Problem D",
+      text: "I am going to put a garden against a pre-existing fence. I have 40 meters of fencing and want the area of the garden to be 125 m². What will the dimensions of the garden be?" }),
+    qTri({ S: 15, c: 12, unit: "in", src: "Problem E",
+      text: "The sum of the legs of a right triangle is 15 in. The hypotenuse is 12 in. Find the lengths of the legs." }),
+    qNum({ m: 10, n: 12, src: "Problem F", text: "The sum of two numbers is 22. Their product is 120. What are the two numbers?" }),
+    qRect({ k: 2, d: -10, w0: 60, unit: "yards", thing: "lacrosse field", src: "Problem G",
+      text: "A lacrosse field has an area of 6,600 square yards. Its length is 10 yards fewer than twice its width. What are the dimensions of a lacrosse field?" }),
   ].map((q, i) => ({ ...q, id: "q" + (i + 1) }));
 }
 
-/* ---------- Complex arithmetic ---------- */
-const cadd = (x, y) => [x[0] + y[0], x[1] + y[1]];
-const csub = (x, y) => [x[0] - y[0], x[1] - y[1]];
-const cmul = (x, y) => [x[0] * y[0] - x[1] * y[1], x[0] * y[1] + x[1] * y[0]];
-const cdiv = (x, y) => { const d = y[0] * y[0] + y[1] * y[1]; return [(x[0] * y[0] + x[1] * y[1]) / d, (x[1] * y[0] - x[0] * y[1]) / d]; };
-function csqrt(x) {
-  if (Math.abs(x[1]) < 1e-12) return x[0] >= 0 ? [Math.sqrt(x[0]), 0] : [0, Math.sqrt(-x[0])];
-  const r = Math.hypot(x[0], x[1]);
-  return [Math.sqrt((r + x[0]) / 2), Math.sign(x[1]) * Math.sqrt((r - x[0]) / 2)];
-}
-function cpow(x, y) {
-  if (Math.abs(y[1]) < 1e-12 && Number.isInteger(y[0]) && Math.abs(y[0]) <= 12) {
-    let out = [1, 0]; for (let i = 0; i < Math.abs(y[0]); i++) out = cmul(out, x);
-    return y[0] < 0 ? cdiv([1, 0], out) : out;
-  }
-  if (Math.abs(x[1]) < 1e-12 && Math.abs(y[1]) < 1e-12 && x[0] >= 0) return [Math.pow(x[0], y[0]), 0];
-  return [NaN, NaN];
-}
+/* ---------- Random generators for extra practice ---------- */
+const DROP_CTX = [
+  { obj: "phone", start: H => `A phone slips off a balcony ${H} feet above the ground.`, ground: "hit the ground", stop: k => `land on a ${k}-foot-tall hedge` },
+  { obj: "rock", start: H => `A rock breaks off a cliff ${H} feet above a lake.`, ground: "hit the water", stop: k => `pass a ledge ${k} feet above the water` },
+  { obj: "water balloon", start: H => `A water balloon is dropped from a rooftop ${H} feet above the sidewalk.`, ground: "hit the sidewalk", stop: k => `hit an awning ${k} feet above the sidewalk` },
+  { obj: "apple", start: H => `An apple falls from a branch ${H} feet above the ground.`, ground: "hit the ground", stop: k => `land on a ${k}-foot-tall shed roof` },
+];
+const PROJ_CTX = [
+  { obj: "ball", ground: "the ground", up: true, make: (b, c) => `A ball is thrown upward from a ${c}-foot-tall platform. Its height after t seconds is h(t) = ${hText(b, c)}. How long until the ball hits the ground?` },
+  { obj: "ball", ground: "the court", up: false, make: (b, c) => `A volleyball is spiked from ${c} feet above the court. Its height after t seconds is h(t) = ${hText(b, c)}. How much time does the other team have before it touches the court?` },
+  { obj: "diver", ground: "the water", up: true, make: (b, c) => `A diver jumps up from a ${c}-foot platform. Her height after t seconds is h(t) = ${hText(b, c)}. How long until she reaches the water?` },
+  { obj: "rocket", ground: "the ground", up: true, make: (b, c) => `A model rocket launches from a ${c}-foot-tall stand. Its height after t seconds is h(t) = ${hText(b, c)}. How long until it lands?` },
+];
+function hText(b, c) { return `−16t² ${b < 0 ? "−" : "+"} ${Math.abs(b)}t + ${c}`; }
+const FENCE_CTX = [
+  { place: "garden", wall: "fence", make: (F, A, u) => `A garden will go against an existing fence. There are ${F} ${u} of fencing, and the area should be ${A} ${u}². What are the dimensions of the garden?` },
+  { place: "pen", wall: "barn", make: (F, A, u) => `A farmer builds a rectangular pen against the side of a barn using ${F} ${u} of fencing. The pen needs an area of ${A} ${u}². What are the dimensions of the pen?` },
+  { place: "play area", wall: "wall", make: (F, A, u) => `A rectangular dog play area is built against a house wall with ${F} ${u} of fencing. It should have an area of ${A} ${u}². What are the dimensions?` },
+];
+const RECT_CTX = [
+  { thing: "soccer field", unit: "yards", make: (A, phrase) => `A soccer field has an area of ${A.toLocaleString("en-US")} square yards. Its length is ${phrase}. What are the dimensions of the field?` },
+  { thing: "garden", unit: "feet", make: (A, phrase) => `A rectangular garden has an area of ${A.toLocaleString("en-US")} square feet. Its length is ${phrase}. What are the dimensions of the garden?` },
+  { thing: "poster", unit: "inches", make: (A, phrase) => `A poster has an area of ${A.toLocaleString("en-US")} square inches. Its length is ${phrase}. What are the dimensions of the poster?` },
+  { thing: "patio", unit: "feet", make: (A, phrase) => `A rectangular patio has an area of ${A.toLocaleString("en-US")} square feet. Its length is ${phrase}. What are the dimensions of the patio?` },
+];
+const GEN = {
+  drop() {
+    const ctx = pick(DROP_CTX), H = ri(30, 200), k = Math.random() < 0.4 ? ri(3, 15) : 0;
+    const text = `${ctx.start(H)} Its height after t seconds is h(t) = −16t² + ${H}. How long until it will ${k ? ctx.stop(k) : ctx.ground}?`;
+    return qDrop({ H, k, obj: ctx.obj, text });
+  },
+  projectile() {
+    for (;;) {
+      const ctx = pick(PROJ_CTX), b = ctx.up ? ri(5, 60) : -ri(20, 60), c = ri(5, 60), D = b * b + 64 * c;
+      if (isSq(D)) continue;
+      return qProj({ b, c, obj: ctx.obj, ground: ctx.ground, text: ctx.make(b, c) });
+    }
+  },
+  fence() {
+    for (;;) {
+      const ctx = pick(FENCE_CTX), u = pick(["m", "ft"]), F = 2 * ri(10, 45), A = ri(Math.ceil(F * F / 20), Math.floor((F * F - 1) / 8)), D = F * F - 8 * A;
+      if (D <= 0 || isSq(D)) continue;
+      return qFence({ F, A, unit: u, place: ctx.place, wall: ctx.wall, text: ctx.make(F, A, u) });
+    }
+  },
+  triangle() {
+    for (;;) {
+      const c = ri(5, 25), S = ri(c + 1, Math.floor(c * Math.SQRT2 - 0.05)), D = 8 * c * c - 4 * S * S;
+      if (S <= c || D <= 0 || isSq(D)) continue;
+      const u = pick(["in", "cm", "ft"]);
+      return qTri({ S, c, unit: u, text: `The legs of a right triangle add up to ${S} ${u}. The hypotenuse is ${c} ${u}. Find the lengths of the legs.` });
+    }
+  },
+  numbers() {
+    let m, n; do { m = ri(2, 25); n = ri(2, 25); } while (m === n);
+    return qNum({ m: Math.min(m, n), n: Math.max(m, n), text: `The sum of two numbers is ${m + n}. Their product is ${m * n}. What are the two numbers?` });
+  },
+  rect() {
+    for (;;) {
+      const ctx = pick(RECT_CTX), k = pick([2, 2, 3]), w0 = ri(4, 70), d = nz(-20, 20), l0 = k * w0 + d;
+      if (l0 <= w0) continue;
+      const phrase = `${Math.abs(d)} ${ctx.unit} ${d < 0 ? "fewer" : "more"} than ${k === 2 ? "twice" : k + " times"} its width`;
+      return qRect({ k, d, w0, unit: ctx.unit, thing: ctx.thing, text: ctx.make(w0 * l0, phrase) });
+    }
+  },
+  interpret() { return pick([GEN.drop, GEN.projectile, GEN.rect])(); },
+};
 
-/* ---------- Answer parser ---------- */
+/* ---------- Answer parser (one value per box) ---------- */
 function tokenize(str) {
   const toks = []; let i = 0;
   while (i < str.length) {
@@ -544,10 +647,8 @@ function tokenize(str) {
       if (!/^(\d+\.?\d*|\.\d+)$/.test(raw)) throw new Error(`"${raw}" isn't a number I can read.`);
       toks.push({ k: "n", v: parseFloat(raw), raw }); i = j; continue;
     }
-    if ("+-*/^()±√,".includes(ch)) { toks.push({ k: ch }); i++; continue; }
-    if (ch === "i") { toks.push({ k: "i" }); i++; continue; }
-    if (/[a-z]/i.test(ch)) throw new Error("Type only the solutions (numbers, i, √, ±, fractions). Leave out other letters.");
-    throw new Error(`I can't read "${ch}". Use numbers, i, √, ±, / and parentheses.`);
+    if ("+-*/^()±√".includes(ch)) { toks.push({ k: ch }); i++; continue; }
+    throw new Error(`I can't read "${ch}". Type a number, like 1.77.`);
   }
   return toks;
 }
@@ -561,7 +662,7 @@ function parseExpr(toks) {
     for (;;) {
       const t = peek(); if (!t) break;
       if (t.k === "*" || t.k === "/") { p++; a = { t: "bin", op: t.k, a, b: unary() }; continue; }
-      if (t.k === "n" || t.k === "(" || t.k === "√" || t.k === "i") { a = { t: "bin", op: "*", imp: true, a, b: power() }; continue; }
+      if (t.k === "n" || t.k === "(" || t.k === "√") { a = { t: "bin", op: "*", a, b: power() }; continue; }
       break;
     }
     return a;
@@ -575,8 +676,7 @@ function parseExpr(toks) {
   function primary() {
     const t = peek();
     if (!t) throw new Error("Your answer seems to stop early. Is something missing at the end?");
-    if (t.k === "n") { p++; return { t: "num", v: t.v, raw: t.raw }; }
-    if (t.k === "i") { p++; return { t: "i" }; }
+    if (t.k === "n") { p++; return { t: "num", v: t.v }; }
     if (t.k === "(") { p++; const a = expr(); if (!eat(")")) throw new Error("A closing parenthesis ) is missing."); return { t: "par", a }; }
     if (t.k === "√") { p++; return { t: "sqrt", a: primary() }; }
     throw new Error(`Something is out of place near "${t.k}".`);
@@ -585,171 +685,107 @@ function parseExpr(toks) {
   if (p < toks.length) throw new Error(toks[p].k === ")" ? "There's an extra closing parenthesis )." : `Something is out of place near "${toks[p].k}".`);
   return ast;
 }
-function parseAnswer(raw) {
-  const s = raw.replace(/[−–—]/g, "-").replace(/[×·]/g, "*").replace(/÷/g, "/")
-    .replace(/plus\s*or\s*minus|\+\s*\/\s*-|\+\s*-/gi, "±").replace(/\bpm\b/gi, "±")
-    .replace(/square\s*root|sqrt|root/gi, "√").replace(/\b[a-z]\s*[₁₂12]?\s*=/gi, "")
-    .replace(/\b(or|and)\b/gi, ",").replace(/;/g, ",");
-  const toks = tokenize(s), parts = [[]]; let depth = 0;
-  for (const t of toks) {
-    if (t.k === "(") depth++; if (t.k === ")") depth--;
-    if (t.k === "," && depth === 0) parts.push([]); else parts[parts.length - 1].push(t);
-  }
-  const asts = parts.filter(x => x.length).map(parseExpr);
-  if (!asts.length) throw new Error("Type your answer first.");
-  return asts;
-}
 function ev(n) {
   switch (n.t) {
-    case "num": return [[n.v, 0]];
-    case "i": return [[0, 1]];
+    case "num": return [n.v];
     case "par": return ev(n.a);
-    case "neg": return ev(n.a).map(x => [-x[0], -x[1]]);
-    case "pm": return ev(n.a).flatMap(x => [x, [-x[0], -x[1]]]);
-    case "sqrt": return ev(n.a).map(csqrt);
+    case "neg": return ev(n.a).map(x => -x);
+    case "pm": return ev(n.a).flatMap(x => [x, -x]);
+    case "sqrt": return ev(n.a).map(x => Math.sqrt(x));
     case "bin": {
       const A = ev(n.a), B = ev(n.b), out = [];
       for (const x of A) for (const y of B) {
-        if (n.op === "+") out.push(cadd(x, y)); else if (n.op === "-") out.push(csub(x, y));
-        else if (n.op === "±") out.push(cadd(x, y), csub(x, y));
-        else if (n.op === "*") out.push(cmul(x, y)); else if (n.op === "/") out.push(cdiv(x, y)); else out.push(cpow(x, y));
+        if (n.op === "+") out.push(x + y); else if (n.op === "-") out.push(x - y); else if (n.op === "±") out.push(x + y, x - y);
+        else if (n.op === "*") out.push(x * y); else if (n.op === "/") out.push(x / y); else out.push(Math.pow(x, y));
       }
       return out;
     }
   }
-  return [[NaN, NaN]];
+  return [NaN];
 }
-const strip = n => (n.t === "par" ? strip(n.a) : n);
-const has = (n, f) => !!n && (f(n) || has(n.a, f) || has(n.b, f));
-/* integer coefficient of one product term, ignoring i and radicals; null when not a simple product */
-function intCoef(n) {
-  if (n.t === "num") return Number.isInteger(n.v) ? n.v : null;
-  if (n.t === "i" || n.t === "sqrt") return 1;
-  if (n.t === "bin" && n.op === "*") { const a = intCoef(n.a), b = intCoef(n.b); return a === null || b === null ? null : a * b; }
-  return null;
+function parseValue(raw) {
+  const s = String(raw).replace(/[−–—]/g, "-").replace(/[×·]/g, "*").replace(/÷/g, "/")
+    .replace(/square\s*root|sqrt|root/gi, "√").replace(/\+\s*\/\s*-|\+\s*-/g, "±")
+    .replace(/^\s*[a-z][a-z0-9 ]*=/i, "")                  /* "t = 1.77" */
+    .replace(/(\d),(\d{3})(?!\d)/g, "$1$2")                 /* 6,600 */
+    .replace(/[a-z]+[²³]?\.?/gi, "").trim();               /* units like sec, ft, m² */
+  if (!s) throw new Error("Type a number in each box.");
+  const vals = ev(parseExpr(tokenize(s)));
+  const u = vals.filter((v, i) => vals.findIndex(w => Math.abs(w - v) < 1e-9) === i);
+  if (u.length !== 1) throw new Error("Put just one value in each box (no ±). Decide which solution makes sense.");
+  if (!isFinite(u[0])) throw new Error("That isn't a real number. Check for a negative under a square root or a division by zero.");
+  return u[0];
 }
-function addTerms(n, out) {
-  if (n.t === "par" || n.t === "neg" || n.t === "pm") return addTerms(n.a, out);
-  if (n.t === "bin" && "+-±".includes(n.op)) { addTerms(n.a, out); addTerms(n.b, out); return out; }
-  out.push(n); return out;
-}
-function flagWalk(n, f) {
-  if (!n) return f;
-  if (n.t === "bin" && n.op === "/") {
-    if (has(n.b, x => x.t === "sqrt")) f.radDen = true;
-    const d = strip(n.b);
-    if (d.t === "num" && Number.isInteger(d.v) && d.v > 1) {
-      const cs = addTerms(n.a, []).map(intCoef);
-      if (cs.every(c => c !== null)) { const g = cs.reduce((acc, c) => gcd(acc, c), d.v); if (g > 1) f.unreduced = true; }
-    }
-  }
-  if (n.t === "sqrt") {
-    const inner = strip(n.a), vals = ev(inner);
-    if (vals.every(v => Math.abs(v[1]) < 1e-12 && v[0] < 0)) f.negRad = true;
-    if (inner.t === "num" && Number.isInteger(inner.v) && inner.v > 1) {
-      const [s, t] = simpRad(inner.v);
-      if (s > 1 && !f.unsimp) f.unsimp = { v: inner.v, s, t };
-    } else if (has(inner, x => x.t === "bin" && x.op === "/")) f.radFrac = true;
-  }
-  flagWalk(n.a, f); flagWalk(n.b, f); return f;
-}
-const wrapAdd = a => (a.t === "bin" && "+-±".includes(a.op) ? `\\left(${tex(a)}\\right)` : tex(a));
-function tex(n) {
-  switch (n.t) {
-    case "num": return n.raw;
-    case "i": return "i";
-    case "par": return `\\left(${tex(n.a)}\\right)`;
-    case "neg": return "-" + wrapAdd(n.a);
-    case "pm": return "\\pm " + wrapAdd(n.a);
-    case "sqrt": return `\\sqrt{${tex(strip(n.a))}}`;
-    case "bin":
-      if (n.op === "/") return `\\frac{${tex(strip(n.a))}}{${tex(strip(n.b))}}`;
-      if (n.op === "^") return `{${tex(n.a)}}^{${tex(strip(n.b))}}`;
-      if (n.op === "*") return n.imp && n.b.t !== "num" ? `${tex(n.a)}${tex(n.b)}` : `${tex(n.a)} \\cdot ${tex(n.b)}`;
-      return `${tex(n.a)} ${n.op === "±" ? "\\pm" : n.op} ${tex(n.b)}`;
-  }
-  return "";
-}
-const cdist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-function uniq(vals) { const out = []; for (const v of vals) if (!out.some(o => cdist(o, v) < 1e-7)) out.push(v); return out; }
-const isReal = v => Math.abs(v[1]) < 1e-9;
-function checkAnswer(q, raw) {
-  const asts = parseAnswer(raw);
-  let vals = []; asts.forEach(a => vals.push(...ev(a)));
-  if (vals.some(v => !isFinite(v[0]) || !isFinite(v[1]))) return { status: "error", msg: "Part of your answer isn't a number. Check for a division by zero." };
-  vals = uniq(vals); const exp = uniq(q.roots);
-  const match = tol => vals.length === exp.length && exp.every(e => vals.some(v => cdist(v, e) < tol));
-  const f = {}; asts.forEach(a => flagWalk(a, f));
-  if (match(1e-6)) {
-    if (f.negRad) return { status: "almost", cx: true, msg: "Your values are correct, but write the square root of a negative using i. For example, √(−9) = 3i and √(−68) = 2i√17." };
-    if (f.radDen || f.radFrac) return { status: "almost", msg: "Your values are correct, but there's a square root in a denominator. Rationalize the denominator to finish." };
-    if (f.unsimp) return { status: "almost", msg: `Your values are correct, but √${f.unsimp.v} isn't simplified. √${f.unsimp.v} = ${f.unsimp.s}√${f.unsimp.t}.` };
-    if (f.unreduced) return { status: "almost", msg: "Your values are correct, but the fraction isn't reduced. Every term on top shares a factor with the bottom. Divide it out." };
-    return { status: "correct" };
-  }
-  if (match(0.011)) return { status: "almost", msg: "Those decimals are close. Give the exact answer instead, using √, i and fractions rather than rounded decimals." };
-  const found = exp.filter(e => vals.some(v => cdist(v, e) < 1e-6)).length;
-  if (found && vals.length < exp.length) return { status: "wrong", msg: `You found ${found} of the ${exp.length} solutions. Look for the other one. Did you use ± or set every factor equal to zero?` };
-  if (found) return { status: "wrong", msg: "At least one of your values is right, but not all of them. Check each solution." };
-  const expCx = exp.some(e => !isReal(e));
-  if (expCx && vals.every(isReal)) return { status: "wrong", cx: true, msg: "These solutions are imaginary. A negative under the square root becomes i, like √(−9) = 3i." };
-  if (!expCx && vals.some(v => !isReal(v))) return { status: "wrong", msg: "These solutions are real, not imaginary. Check the sign of the number under the square root." };
-  if (vals.length === exp.length && exp.every(e => vals.some(v => cdist(v, [-e[0], -e[1]]) < 1e-6))) return { status: "wrong", msg: "Check your signs. Your answers have the opposite signs of the real solutions." };
-  return { status: "wrong", msg: "Not quite. Check your work on the whiteboard, or open Help for a hint." };
+function checkAnswer(q, raws) {
+  const vals = raws.map((raw, i) => {
+    try { return parseValue(raw); } catch (e) { throw new Error(q.fields.length > 1 ? `${q.fields[i].label}: ${e.message}` : e.message); }
+  });
+  const near = (v, e, tol) => Math.abs(v - e) <= tol + 1e-9;
+  const setMatch = (set, tol) => set.every((e, i) => near(vals[i], e, tol));
+  if (q.sets.some(s => setMatch(s, 0.011))) return { status: "correct" };
+  if (q.reject.length && vals.some(v => q.reject.some(r => near(v, r, 0.06)))) return { status: "wrong", interp: true, msg: q.rejectMsg };
+  if (q.sets.some(s => setMatch(s, 0.06))) return { status: "almost", msg: "Close! Round to the nearest hundredth (two decimal places), and round only at the end." };
+  if (q.fields.length === 2 && q.sets.some(s => near(vals[0], s[1], 0.011) && near(vals[1], s[0], 0.011)))
+    return { status: "wrong", msg: "Your two values are switched. Check which box is which." };
+  if (q.sets.some(s => s.some((e, i) => near(vals[i], e, 0.011)))) return { status: "wrong", msg: "One of your values is right. Check the other one." };
+  return { status: "wrong", msg: "Not quite. Check your equation and your work on the whiteboard, or open Help for a hint." };
 }
 
-/* ---------- Graph check (SVG) ---------- */
-const round2 = x => { const r = Math.round(x * 100) / 100; return Math.abs(r - Math.round(r)) < 1e-9 ? fmt(Math.round(r)) : (Math.abs(x - r) < 1e-9 ? "" : "≈ ") + fmt(r); };
-function niceStep(span) { const raw = span / 8, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+/* ---------- Graph (axes and key points labeled) ---------- */
+function niceStep(span) { const raw = span / 7, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+const tickLab = v => { const r = +v.toFixed(4); return Math.abs(r) >= 1000 ? r.toLocaleString("en-US") : fmt(r); };
 function graphSVG(q) {
-  const [a, b, c] = q.std, f = x => a * x * x + b * x + c, x0 = -b / (2 * a);
-  const real = uniq(q.roots).filter(isReal).map(r => r[0]);
-  let lo, hi;
-  if (real.length) { lo = Math.min(...real); hi = Math.max(...real); const pad = Math.max(2, (hi - lo) * 0.35); lo -= pad; hi += pad; }
-  else { lo = x0 - 4; hi = x0 + 4; }
-  lo = Math.min(lo, x0 - 1); hi = Math.max(hi, x0 + 1);
-  const W = 520, H = 250, N = 200, pts = [];
-  for (let i = 0; i <= N; i++) { const x = lo + (hi - lo) * i / N; pts.push([x, f(x)]); }
-  let ymin = Math.min(0, ...pts.map(p => p[1])), ymax = Math.max(0, ...pts.map(p => p[1]));
-  const py = (ymax - ymin) * 0.08 || 1; ymin -= py; ymax += py;
-  const sx = x => (x - lo) / (hi - lo) * W, sy = y => H - (y - ymin) / (ymax - ymin) * H;
-  const y0 = sy(0), st = niceStep(hi - lo);
-  let g = `<svg class="graph-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Graph of f(x)">`;
-  for (let t = Math.ceil(lo / st) * st; t <= hi + 1e-9; t += st) {
-    const X = sx(t); if (Math.abs(t) < 1e-9) continue;
-    g += `<line class="g-grid" x1="${X}" y1="0" x2="${X}" y2="${H}"/><text class="g-tick" x="${X}" y="${Math.min(H - 4, y0 + 16)}" text-anchor="middle">${fmt(+t.toFixed(4))}</text>`;
+  const g = q.graph, [a, b, c] = g.f, f = x => a * x * x + b * x + c, lo = g.lo, hi = g.hi, level = g.level || 0;
+  const W = 560, H = 300, mL = 64, mR = 18, mT = 18, mB = 46, pw = W - mL - mR, ph = H - mT - mB;
+  const pts = []; for (let i = 0; i <= 200; i++) { const x = lo + (hi - lo) * i / 200; pts.push([x, f(x)]); }
+  let ymin = Math.min(0, level, ...pts.map(p => p[1])), ymax = Math.max(0, level, ...pts.map(p => p[1]));
+  const pad = (ymax - ymin) * 0.1 || 1; ymax += pad; if (ymin < 0) ymin -= pad;
+  const sx = x => mL + (x - lo) / (hi - lo) * pw, sy = y => mT + ph - (y - ymin) / (ymax - ymin) * ph;
+  let s = `<svg class="graph-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Graph with key points labeled"><defs><clipPath id="clip-${q.id}"><rect x="${mL}" y="${mT}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+  const xs = niceStep(hi - lo), ys = niceStep(ymax - ymin);
+  for (let t = Math.ceil(lo / xs) * xs; t <= hi + 1e-9; t += xs) {
+    const X = sx(t);
+    s += `<line class="g-grid" x1="${X}" y1="${mT}" x2="${X}" y2="${mT + ph}"/><text class="g-tick" x="${X}" y="${mT + ph + 16}" text-anchor="middle">${tickLab(t)}</text>`;
   }
-  g += `<line class="g-axis" x1="0" y1="${y0}" x2="${W}" y2="${y0}"/>`;
-  if (lo < 0 && hi > 0) g += `<line class="g-axis" x1="${sx(0)}" y1="0" x2="${sx(0)}" y2="${H}"/>`;
-  g += `<path class="g-curve" d="${pts.map((p, i) => (i ? "L" : "M") + sx(p[0]).toFixed(1) + " " + sy(p[1]).toFixed(1)).join(" ")}"/>`;
-  real.forEach(x => {
-    const X = sx(x), right = X < W - 90;
-    g += `<circle class="g-dot" cx="${X}" cy="${y0}" r="6"/><text class="g-lab" x="${X + (right ? 9 : -9)}" y="${y0 - 10}" text-anchor="${right ? "start" : "end"}">x ${round2(x).startsWith("≈") ? round2(x) : "= " + round2(x)}</text>`;
+  for (let t = Math.ceil(ymin / ys) * ys; t <= ymax + 1e-9; t += ys) {
+    const Y = sy(t);
+    s += `<line class="g-grid" x1="${mL}" y1="${Y}" x2="${mL + pw}" y2="${Y}"/><text class="g-tick" x="${mL - 6}" y="${Y + 4}" text-anchor="end">${tickLab(t)}</text>`;
+  }
+  s += `<line class="g-axis" x1="${mL}" y1="${sy(0)}" x2="${mL + pw}" y2="${sy(0)}"/><line class="g-axis" x1="${sx(Math.max(lo, 0))}" y1="${mT}" x2="${sx(Math.max(lo, 0))}" y2="${mT + ph}"/>`;
+  if (level) s += `<line class="g-level" x1="${mL}" y1="${sy(level)}" x2="${mL + pw}" y2="${sy(level)}"/><text class="g-tick" x="${mL + pw - 4}" y="${sy(level) - 6}" text-anchor="end">y = ${tickLab(level)}</text>`;
+  s += `<path class="g-curve" clip-path="url(#clip-${q.id})" d="${pts.map((p, i) => (i ? "L" : "M") + sx(p[0]).toFixed(1) + " " + sy(p[1]).toFixed(1)).join(" ")}"/>`;
+  /* key points: where the curve meets the level line, plus the starting point when it is a height model */
+  const keys = [], Dd = b * b - 4 * a * (c - level);
+  if (Dd >= 0) [(-b + Math.sqrt(Dd)) / (2 * a), (-b - Math.sqrt(Dd)) / (2 * a)].forEach(x => { if (x >= lo - 1e-9 && x <= hi + 1e-9 && !keys.some(k => Math.abs(k[0] - x) < 1e-9)) keys.push([x, level]); });
+  if (lo === 0 && c > 0 && /^h/.test(g.yl)) keys.push([0, c]);
+  keys.forEach(([x, y]) => {
+    const X = sx(x), Y = sy(y), right = X < mL + pw - 110, up = Y > mT + 30;
+    s += `<circle class="g-dot" cx="${X}" cy="${Y}" r="6"/><text class="g-lab" x="${X + (right ? 10 : -10)}" y="${Y + (up ? -10 : 20)}" text-anchor="${right ? "start" : "end"}">(${tickLab(+d2(x))}, ${tickLab(+d2(y))})</text>`;
   });
-  g += `</svg>`;
-  const msg = real.length
-    ? `The graph crosses the x-axis at ${real.map(x => "x " + (round2(x).startsWith("≈") ? round2(x) : "= " + round2(x))).join(" and ")}. Those x-intercepts match the solutions.`
-    : "The parabola never touches the x-axis, so there are no real solutions. That's why the answers are imaginary.";
-  return `<div class="graph"><h4>Check with a graph</h4>${g}<p>${msg}</p>
-    <p class="muted">Try it in Desmos: graph ${M("f(x) = " + poly(q.std, "x"))}</p></div>`;
+  s += `<text class="g-title" x="${mL + pw / 2}" y="${H - 6}" text-anchor="middle">${esc(g.xl)}</text>`;
+  s += `<text class="g-title" transform="translate(14 ${mT + ph / 2}) rotate(-90)" text-anchor="middle">${esc(g.yl)}</text></svg>`;
+  const fx = poly(g.f, "x");
+  return `<div class="graph"><h4>Check with a graph</h4>${s}
+    <p class="muted">Try it in Desmos: graph ${M("y = " + fx)}${level ? ` and ${M("y = " + level)}` : ""}, then click the ${level ? "intersection" : "x-intercept"}${keys.length > 1 ? "s" : ""}.</p></div>`;
 }
 
 /* ---------- State ---------- */
-const STORE = "multiMethodsReview.v1";
+const STORE = "wordProblemsReview.v1";
 let state = load() || fresh();
 function fresh() { const qs = startingSet(); return { questions: qs, res: {}, cur: 0, view: "q", nextId: qs.length + 1, drafts: {} }; }
 function load() { try { const s = JSON.parse(localStorage.getItem(STORE)); return s && Array.isArray(s.questions) && s.questions.length ? s : null; } catch (e) { return null; } }
 function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable */ } }
-const R = id => (state.res[id] = state.res[id] || { method: null, methodOk: null, methodStatus: null, attempts: 0, firstOk: null, solved: false, revealed: false, hints: 0, cxIssue: false, last: null });
+const R = id => (state.res[id] = state.res[id] || { eqPick: null, eqStatus: null, method: null, methodOk: null, methodStatus: null, attempts: 0, firstOk: null, solved: false, revealed: false, hints: 0, interpIssue: false, last: null });
 
 /* ---------- Rendering ---------- */
 const $ = s => document.querySelector(s);
 const work = $("#work");
+let lastField = 0;
 function dotClass(q) {
   const r = state.res[q.id]; if (!r) return "";
-  if (r.solved && r.firstOk) return "good";
+  if (r.solved && r.firstOk && r.eqStatus === "right") return "good";
   if (r.solved) return "retry";
-  if (r.revealed || r.attempts) return "bad";
+  if (r.revealed || r.attempts || r.eqStatus === "wrong") return "bad";
   return "";
 }
 function renderDots() {
@@ -763,85 +799,92 @@ function render() {
   save();
 }
 function methodLabel(id) { return METHODS.find(m => m.id === id).label; }
-const allInts = q => q.roots.every(r => isReal(r) && Math.abs(r[0] - Math.round(r[0])) < 1e-9);
 function methodStatusFor(q, m) {
   if (m === q.best) return "right";
-  if (q.alsoOk.includes(m)) return "ok";
-  if (m === "graph" && allInts(q)) return "ok";
+  if (q.alsoOk.includes(m) || m === "graph") return "ok";
   return "wrong";
 }
 function methodExtra(q, r) {
-  const st = r.methodStatus, m = r.method;
-  if (m === "graph") {
-    if (q.complex) return " A graph can't find these: the solutions are imaginary, so the parabola never crosses the x-axis. Use graphing to check.";
-    if (allInts(q)) return " The x-intercepts land on whole numbers, so a graph shows them, but graphing is best for checking your work.";
-    return " A graph only gives decimal estimates of these x-intercepts, not exact answers. Use graphing to check your work.";
-  }
-  if (st !== "wrong") return "";
-  if (m === "formula") return " The quadratic formula works for ANY quadratic, but it's usually a last resort. This one can be solved faster another way.";
-  if (m === "factor" && q.complex) return " Factoring only works when there are 2 real solutions.";
-  if (m === "factor" && q.best === "formula") return " Quick check: there are no factors of a·c that add to b.";
-  if (m === "sqrt") return " Taking square roots needs no b term, or a squared binomial like (x − 5)², with only a constant on the other side.";
+  const m = r.method;
+  if (m === "graph") return " The directions allow a graph too: sketch it with the axes and key points labeled, and read the key points to the nearest hundredth.";
+  if (r.methodStatus !== "wrong") return "";
+  if (m === "formula") return " The quadratic formula works for ANY quadratic, but this one can be solved faster another way.";
+  if (m === "factor") return " Quick check: b² − 4ac isn't a perfect square, so it won't factor.";
+  if (m === "sqrt") return " Taking square roots only works when there's no b term (or a squared binomial).";
   return "";
 }
+function stepHead(n, txt) { return `<h3><span class="step-num">${n}</span>${txt}</h3>`; }
 function renderQuestion() {
   const q = state.questions[state.cur], r = R(q.id), n = state.questions.length;
-  const methodDone = r.methodStatus !== null;
+  const eqDone = r.eqStatus !== null, methodDone = r.methodStatus !== null;
   let h = `<div class="panel">
-    <div class="q-head"><span class="eyebrow">Question ${state.cur + 1} of ${n}</span><span style="display:flex;gap:6px;flex-wrap:wrap">${q.src ? `<span class="badge">${esc(q.src)}</span>` : ""}${q.extra ? `<span class="badge">Extra practice</span>` : ""}</span></div>
-    <div class="equation">${M(q.eq, true)}</div>
-    <div class="step"><h3><span class="step-num">1</span>What is the best method to solve this equation?</h3>
-    <div class="methods" role="radiogroup" aria-label="Method">`;
-  for (const m of METHODS) {
+    <div class="q-head"><span class="eyebrow">Question ${state.cur + 1} of ${n}</span><span style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge">${esc(SKILLS[q.skill].name)}</span>${q.src ? `<span class="badge">${esc(q.src)}</span>` : ""}${q.extra ? `<span class="badge">Extra practice</span>` : ""}</span></div>
+    <p class="problem">${esc(q.text)}</p>
+    <div class="step">${stepHead(1, "Which equation models this situation?")}
+    <div class="methods" role="radiogroup" aria-label="Equation">`;
+  q.choices.forEach((c, i) => {
     let cls = "";
-    if (methodDone) {
-      if (m.id === q.best) cls = "right";
-      else if (m.id === r.method) cls = r.methodStatus === "ok" ? "ok" : "wrong";
-    } else if (r.method === m.id) cls = "sel";
-    h += `<button class="method ${cls}" data-method="${m.id}" type="button" role="radio" aria-checked="${r.method === m.id}" ${methodDone ? "disabled" : ""}><b>${m.label}</b><small>${m.sub}</small></button>`;
-  }
+    if (eqDone) { if (c.ok) cls = "right"; else if (i === r.eqPick) cls = "wrong"; }
+    else if (r.eqPick === i) cls = "sel";
+    h += `<button class="method eqc ${cls}" data-eq="${i}" type="button" role="radio" aria-checked="${r.eqPick === i}" ${eqDone ? "disabled" : ""}>${M(c.tex)}</button>`;
+  });
   h += `</div>`;
-  if (!methodDone) {
-    h += `<div class="actions"><button class="btn primary" id="checkMethod" type="button" ${r.method ? "" : "disabled"}>Check method</button>
-      <button class="btn help" data-help type="button">? Help</button></div>`;
+  if (!eqDone) {
+    h += `<div class="actions"><button class="btn primary" id="checkEq" type="button" ${r.eqPick === null ? "disabled" : ""}>Check equation</button>
+      <button class="btn help" data-help type="button">? Help</button></div></div></div>`;
   } else {
-    const st = r.methodStatus;
-    const head = st === "right" ? "Yes, that's the best method." : st === "ok" ? `That works too. The best method is <strong>${methodLabel(q.best)}</strong>.` : `Not the best choice. The best method is <strong>${methodLabel(q.best)}</strong>.`;
-    h += feedback(st === "right" ? "good" : st === "ok" ? "warn" : "bad", st === "wrong" ? "✗" : "✓", `${head} ${esc(q.why)}${esc(methodExtra(q, r))}`);
-  }
-  h += `</div>`;
-  if (methodDone) {
-    const finished = r.solved || r.revealed;
-    const draft = (state.drafts && state.drafts[q.id]) || "";
-    h += `<div class="step"><h3><span class="step-num">2</span>Solve. Type every solution, separated by commas.</h3>
-      <div class="answer-row"><label for="ans">${esc(q.v)} =</label><input id="ans" type="text" autocomplete="off" spellcheck="false" inputmode="text" placeholder="e.g. 3, −2   or   (5 ± i√83)/6" value="${esc(draft)}" ${finished ? "disabled" : ""}></div>
-      ${finished ? "" : `<div class="keypad">
-        <button class="key" data-ins="√" type="button" title="Square root">√</button>
-        <button class="key" data-ins="±" type="button" title="Plus or minus">±</button>
-        <button class="key" data-ins="i" type="button" title="Imaginary unit i">i</button>
-        <button class="key" data-ins="()" type="button" title="Parentheses">( )</button>
-        <button class="key" data-ins="/" type="button" title="Fraction bar">/</button>
-        <button class="key" data-ins="-" type="button" title="Negative">−</button>
-        <button class="key" data-ins=", " type="button" title="Next solution">,</button>
-      </div>`}
-      <div class="preview" id="preview"></div>
-      ${finished ? "" : `<div class="hint-line">Type √ as <b>sqrt</b> and ± as <b>+-</b> if you don't want to use the buttons. Press Enter to check.</div>
-      <div class="actions"><button class="btn primary" id="checkAns" type="button">Check answer</button>
-        ${r.attempts ? `<button class="btn" id="reveal" type="button">Show solution</button>` : ""}
-        <button class="btn help" data-help type="button">? Help</button></div>`}
-      ${answerFeedback(r)}
-    </div>`;
-    if (finished) {
-      h += `<div class="solution"><h4>Worked solution</h4><ol>${q.steps.map(s => `<li><p>${esc(s.t)}</p><div class="m">${M(s.m)}</div></li>`).join("")}</ol>
-        <p style="margin:12px 0 0"><b>Answer:</b> ${M(q.ans)}</p></div>${graphSVG(q)}`;
+    const pickC = q.choices[r.eqPick];
+    h += r.eqStatus === "right"
+      ? feedback("good", "✓", `<strong>Yes, that's the right equation.</strong> ${esc(q.steps[0].t)}`)
+      : feedback("bad", "✗", `<strong>Not quite.</strong> ${esc(pickC.why)} The correct equation is highlighted in green.`);
+    h += `</div><div class="step">${stepHead(2, "What is the best method to solve it?")}<div class="methods" role="radiogroup" aria-label="Method">`;
+    for (const m of METHODS) {
+      let cls = "";
+      if (methodDone) { if (m.id === q.best) cls = "right"; else if (m.id === r.method) cls = r.methodStatus === "ok" ? "ok" : "wrong"; }
+      else if (r.method === m.id) cls = "sel";
+      h += `<button class="method ${cls}" data-method="${m.id}" type="button" role="radio" aria-checked="${r.method === m.id}" ${methodDone ? "disabled" : ""}><b>${m.label}</b><small>${m.sub}</small></button>`;
     }
+    h += `</div>`;
+    if (!methodDone) {
+      h += `<div class="actions"><button class="btn primary" id="checkMethod" type="button" ${r.method ? "" : "disabled"}>Check method</button>
+        <button class="btn help" data-help type="button">? Help</button></div>`;
+    } else {
+      const st = r.methodStatus;
+      const head = st === "right" ? "Yes, that's the best method." : st === "ok" ? `That works too. The best method is <strong>${methodLabel(q.best)}</strong>.` : `Not the best choice. The best method is <strong>${methodLabel(q.best)}</strong>.`;
+      h += feedback(st === "right" ? "good" : st === "ok" ? "warn" : "bad", st === "wrong" ? "✗" : "✓", `${head} ${esc(q.why)}${esc(methodExtra(q, r))}`);
+    }
+    h += `</div>`;
+    if (methodDone) {
+      const finished = r.solved || r.revealed, drafts = (state.drafts && state.drafts[q.id]) || [];
+      h += `<div class="step">${stepHead(3, "Solve and interpret. Round to the nearest hundredth.")}
+        <p class="hint-line" style="margin:0">Only enter answers that make sense in the situation.</p>
+        ${q.fields.map((f, i) => `<div class="answer-row"><label for="ans${i}">${esc(f.label)} =</label>
+          <input id="ans${i}" class="ans" data-field="${i}" type="text" autocomplete="off" spellcheck="false" inputmode="decimal" placeholder="e.g. 1.77" value="${esc(drafts[i] || "")}" ${finished ? "disabled" : ""}>
+          ${f.unit ? `<span class="unit">${esc(f.unit)}</span>` : ""}</div>`).join("")}
+        ${finished ? "" : `<div class="keypad">
+          <button class="key" data-ins="√" type="button" title="Square root">√</button>
+          <button class="key" data-ins="()" type="button" title="Parentheses">( )</button>
+          <button class="key" data-ins="/" type="button" title="Fraction bar">/</button>
+          <button class="key" data-ins="-" type="button" title="Negative">−</button>
+          <button class="key" data-ins="." type="button" title="Decimal point">.</button>
+        </div>
+        <div class="actions"><button class="btn primary" id="checkAns" type="button">Check answer</button>
+          ${r.attempts ? `<button class="btn" id="reveal" type="button">Show solution</button>` : ""}
+          <button class="btn help" data-help type="button">? Help</button></div>`}
+        ${answerFeedback(r)}
+      </div>`;
+      if (finished) {
+        h += `<div class="solution"><h4>Worked solution</h4><ol>${q.steps.map(s => `<li><p>${esc(s.t)}</p><div class="m">${M(s.m)}</div></li>`).join("")}</ol>
+          <p style="margin:12px 0 0"><b>Answer:</b> ${M(q.ans)}</p>
+          <p style="margin:8px 0 0"><b>Interpretation:</b> ${esc(q.interp)}</p></div>${graphSVG(q)}`;
+      }
+    }
+    h += `</div>`;
   }
-  h += `</div>`;
   const last = state.cur === n - 1;
   h += `<div class="nav"><button class="btn" id="prev" type="button" ${state.cur === 0 ? "disabled" : ""}>← Previous</button>
     ${last ? `<button class="btn primary" id="toSummary" type="button">See my summary →</button>` : `<button class="btn primary" id="next" type="button">Next question →</button>`}</div>`;
   work.innerHTML = h;
-  updatePreview();
 }
 function feedback(kind, icon, html) { return `<div class="feedback ${kind}" role="status"><span class="icon">${icon}</span><p>${html}</p></div>`; }
 function answerFeedback(r) {
@@ -853,63 +896,55 @@ function answerFeedback(r) {
   if (L.status === "error") return feedback("warn", "!", esc(L.msg));
   return feedback("bad", "✗", `<strong>Not correct.</strong> ${esc(L.msg)}`);
 }
-function updatePreview() {
-  const el = $("#preview"), inp = $("#ans"); if (!el || !inp) return;
-  const v = inp.value.trim(), q = state.questions[state.cur];
-  if (!v) { el.innerHTML = `<span class="ph">Your answer will appear here as math.</span>`; return; }
-  try { const asts = parseAnswer(v); el.innerHTML = M(q.v + " = " + asts.map(tex).join(",\\; ")); }
-  catch (e) { el.innerHTML = `<span class="err">${esc(e.message)}</span>`; }
-}
 
 /* ---------- Summary ---------- */
 function analyze() {
   const rows = [];
   for (const key of Object.keys(SKILLS)) {
-    const qs = state.questions.filter(q => (key === "complex" ? q.complex : q.skill === key));
+    const qs = state.questions.filter(q => (key === "interpret" ? q.reject.length : q.skill === key));
     if (!qs.length) continue;
-    const rs = qs.map(q => state.res[q.id]).filter(r => r && (r.attempts || r.revealed || r.methodStatus));
+    const rs = qs.map(q => state.res[q.id]).filter(r => r && (r.attempts || r.revealed || r.methodStatus || r.eqStatus));
     const answered = rs.filter(r => r.attempts || r.revealed);
-    const methodChecked = rs.filter(r => r.methodStatus);
-    const methodRight = methodChecked.filter(r => r.methodOk).length;
+    const eqChecked = rs.filter(r => r.eqStatus), eqRight = eqChecked.filter(r => r.eqStatus === "right").length;
+    const methodChecked = rs.filter(r => r.methodStatus), methodRight = methodChecked.filter(r => r.methodOk).length;
     const firstRight = answered.filter(r => r.firstOk && !r.revealed).length;
-    let weak;
-    if (key === "complex") weak = answered.some(r => !r.firstOk || r.revealed || r.cxIssue);
-    else weak = methodChecked.some(r => !r.methodOk) || answered.some(r => !r.firstOk || r.revealed);
-    const status = !rs.length ? "none" : weak ? "weak" : "strong";
-    rows.push({ key, total: qs.length, done: answered.length, methodChecked: methodChecked.length, methodRight, firstRight, status,
-      methodWeak: key !== "complex" && methodChecked.some(r => !r.methodOk), answerWeak: answered.some(r => !r.firstOk || r.revealed) });
+    const eqWeak = key !== "interpret" && eqRight < eqChecked.length;
+    const methodWeak = key !== "interpret" && methodRight < methodChecked.length;
+    const answerWeak = key === "interpret" ? answered.some(r => r.interpIssue) : answered.some(r => !r.firstOk || r.revealed);
+    const status = !rs.length ? "none" : (eqWeak || methodWeak || answerWeak) ? "weak" : "strong";
+    rows.push({ key, done: answered.length, eqChecked: eqChecked.length, eqRight, methodChecked: methodChecked.length, methodRight, firstRight, status, eqWeak, methodWeak, answerWeak });
   }
   return rows;
 }
 function renderSummary() {
   const rows = analyze(), all = state.questions.map(q => state.res[q.id]).filter(Boolean);
-  const answered = all.filter(r => r.attempts || r.revealed), methodChecked = all.filter(r => r.methodStatus);
-  const unanswered = state.questions.length - answered.length;
-  const weak = rows.filter(r => r.status === "weak");
+  const answered = all.filter(r => r.attempts || r.revealed), eqChecked = all.filter(r => r.eqStatus), methodChecked = all.filter(r => r.methodStatus);
+  const unanswered = state.questions.length - answered.length, weak = rows.filter(r => r.status === "weak");
   let h = `<div class="panel"><span class="eyebrow">Your results</span><h2 style="font-size:1.5rem;margin-top:4px">Summary</h2>
     <div class="score-row">
-      <div class="score"><b>${answered.filter(r => r.firstOk && !r.revealed).length}/${answered.length}</b><span>answers right on the first try</span></div>
+      <div class="score"><b>${eqChecked.filter(r => r.eqStatus === "right").length}/${eqChecked.length}</b><span>equations set up correctly</span></div>
       <div class="score"><b>${methodChecked.filter(r => r.methodOk).length}/${methodChecked.length}</b><span>best method chosen</span></div>
-      <div class="score"><b>${answered.filter(r => r.solved).length}/${state.questions.length}</b><span>questions solved</span></div>
+      <div class="score"><b>${answered.filter(r => r.firstOk && !r.revealed).length}/${answered.length}</b><span>answers right on the first try</span></div>
     </div>
     ${unanswered ? `<p class="muted" style="margin:12px 0 0">${unanswered} question${unanswered === 1 ? " is" : "s are"} not finished yet. Click a number at the top to go back.</p>` : ""}
   </div>`;
   h += `<div class="panel"><h3 style="font-size:1.1rem">What you need more help on</h3>`;
-  if (!answered.length) h += `<p class="muted">Answer some questions first, then come back here to see what to practice.</p>`;
-  else if (!weak.length) h += `<p>Great job! You got every type right on the first try. Add more questions of any type below if you want extra practice.</p>`;
+  if (!answered.length && !eqChecked.length) h += `<p class="muted">Answer some questions first, then come back here to see what to practice.</p>`;
+  else if (!weak.length) h += `<p>Great job! You set up and solved every type correctly on the first try. Add more questions of any type below if you want extra practice.</p>`;
   else {
     h += `<div class="help-list">${weak.map(r => {
-      const why = [r.methodWeak ? "choosing the method" : "", r.answerWeak ? "getting the answer" : ""].filter(Boolean).join(" and ");
+      const why = [r.eqWeak ? "writing the equation" : "", r.methodWeak ? "choosing the method" : "", r.answerWeak ? (r.key === "interpret" ? "keeping only answers that make sense" : "getting the answer") : ""].filter(Boolean).join(", ");
       return `<div class="help-item"><div><b>${SKILLS[r.key].name}</b><p>${why ? `Trouble with ${why}. ` : ""}${esc(SKILLS[r.key].tip)}</p></div>
         <button class="btn primary" data-more="${r.key}" type="button">+ Add 3 more</button></div>`;
     }).join("")}</div>
     <div class="actions" style="margin-top:14px"><button class="btn primary" id="moreAll" type="button">+ Add practice for all of these (mixed)</button></div>`;
   }
   h += `</div>`;
-  h += `<div class="panel"><h3 style="font-size:1.1rem">Results by question type</h3><div class="table-wrap"><table>
-    <thead><tr><th>Type</th><th>Method</th><th>1st try</th><th>Status</th><th></th></tr></thead><tbody>
+  h += `<div class="panel"><h3 style="font-size:1.1rem">Results by problem type</h3><div class="table-wrap"><table>
+    <thead><tr><th>Type</th><th>Equation</th><th>Method</th><th>1st try</th><th>Status</th><th></th></tr></thead><tbody>
     ${rows.map(r => `<tr><td>${SKILLS[r.key].name}</td>
-      <td class="num">${r.key === "complex" ? "—" : `${r.methodRight}/${r.methodChecked}`}</td>
+      <td class="num">${r.key === "interpret" ? "—" : `${r.eqRight}/${r.eqChecked}`}</td>
+      <td class="num">${r.key === "interpret" ? "—" : `${r.methodRight}/${r.methodChecked}`}</td>
       <td class="num">${r.firstRight}/${r.done}</td>
       <td><span class="pill ${r.status}">${r.status === "weak" ? "Needs practice" : r.status === "strong" ? "Got it" : "Not started"}</span></td>
       <td><button class="btn" data-more="${r.key}" type="button" style="padding:5px 10px;font-size:.8rem">+ 3 more</button></td></tr>`).join("")}
@@ -918,12 +953,11 @@ function renderSummary() {
     <button class="btn" id="restart" type="button">Start over</button></div>`;
   work.innerHTML = h;
 }
-function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function addMore(keys, per) {
-  const seen = new Set(state.questions.map(q => q.eq)), fresh = [];
+  const seen = new Set(state.questions.map(q => q.text)), fresh = [];
   for (const k of keys) for (let i = 0; i < per; i++) {
-    let q, tries = 0; do { q = GEN[k](); tries++; } while (seen.has(q.eq) && tries < 30);
-    seen.add(q.eq); fresh.push(q);
+    let q, tries = 0; do { q = GEN[k](); tries++; } while (seen.has(q.text) && tries < 30);
+    seen.add(q.text); fresh.push(q);
   }
   if (keys.length > 1) shuffle(fresh);
   const start = state.questions.length;
@@ -933,56 +967,63 @@ function addMore(keys, per) {
 
 /* ---------- Help ---------- */
 let helpSteps = 0;
-function openHelp() {
-  helpSteps = 0; renderHelp(); $("#helpModal").hidden = false; $("#helpClose").focus();
-}
+function openHelp() { helpSteps = 0; renderHelp(); $("#helpModal").hidden = false; $("#helpClose").focus(); }
 function closeHelp() { $("#helpModal").hidden = true; }
+function methodHint(q) {
+  return {
+    drop: "Is there a t term? If not, get t² by itself.",
+    projectile: "There's a t term. Check b² − 4ac: is it a perfect square?",
+    fence: "Expand and set it equal to zero first. Then check b² − 4ac: is it a perfect square?",
+    triangle: "Expand and set it equal to zero first. Then check b² − 4ac: is it a perfect square?",
+    numbers: "Set it equal to zero. Can you find two numbers that multiply to c and add to b?",
+    rect: "Set it equal to zero and look for a GCF. Can you find two numbers that multiply to c and add to b?",
+  }[q.skill];
+}
 function renderHelp() {
-  const inQ = state.view === "q", q = inQ ? state.questions[state.cur] : null;
+  const q = state.view === "q" ? state.questions[state.cur] : null;
   let h = "";
   if (q) {
     const r = R(q.id);
     h += `<section><h3>Hint for question ${state.cur + 1}</h3>`;
-    if (r.methodStatus === null) {
-      h += `<p class="muted">Choose and check a method first. Use the guide below to decide.</p>`;
-      if (helpSteps > 0) h += `<div class="hint-steps"><div class="h"><p>Method hint</p><div>${esc(methodHint(q))}</div></div></div>`;
-      else h += `<button class="btn" id="hintNext" type="button">Show a method hint</button>`;
+    if (r.eqStatus === null || r.methodStatus === null) {
+      const isEq = r.eqStatus === null;
+      h += `<p class="muted">${isEq ? "Start by writing the equation. Define a variable first." : "Now choose a method. Use the guide below to decide."}</p>`;
+      if (helpSteps > 0) h += `<div class="hint-steps"><div class="h"><p>${isEq ? "Equation hint" : "Method hint"}</p><div>${esc(isEq ? q.eqHint : methodHint(q))}</div></div></div>`;
+      else h += `<button class="btn" id="hintNext" type="button">Show ${isEq ? "an equation" : "a method"} hint</button>`;
     } else {
       h += `<p class="muted">Each click shows one more step of the solution.</p><div class="hint-steps">${q.steps.slice(0, helpSteps).map((s, i) => `<div class="h"><p>Step ${i + 1}: ${esc(s.t)}</p><div class="m">${M(s.m)}</div></div>`).join("")}</div>`;
       if (helpSteps < q.steps.length) h += `<button class="btn" id="hintNext" type="button">${helpSteps ? "Show the next step" : "Show the first step"}</button>`;
-      else h += `<p class="muted">That's every step. Type the final answer in the box.</p>`;
+      else h += `<p class="muted">That's every step. Type the final answer in the box${q.fields.length > 1 ? "es" : ""}.</p>`;
     }
     h += `</section>`;
   }
-  h += `<section><h3>How to pick the best method</h3><div class="guide">
-    <div><span>Equal to zero, and there are factors of a·c that add to b (take out any GCF first)</span><b>Factoring</b></div>
-    <div><span>No b term: just x² and constants, like 3x² − 21 = 0</span><b>Taking square roots</b></div>
-    <div><span>A squared binomial with only a constant on the other side, like (x − 5)² − 3 = 22</span><b>Taking square roots (don't expand)</b></div>
-    <div><span>It won't factor: b² − 4ac isn't a perfect square, or it's negative</span><b>Quadratic formula (works for ANY quadratic)</b></div>
-    <div><span>Checking your answers</span><b>Graphing: solutions = x-intercepts</b></div>
+  h += `<section><h3>Solving a word problem</h3><div class="guide">
+    <div><span>1. Define your variable</span><b>"Let t = time in seconds"</b></div>
+    <div><span>2. Write the equation</span><b>Use the model or a formula</b></div>
+    <div><span>3. Solve</span><b>Pick the best method</b></div>
+    <div><span>4. Interpret</span><b>Keep only answers that make sense, rounded to hundredths</b></div>
   </div></section>
-  <section><h3>Imaginary solutions</h3>
-    <p>When the number under the square root is negative, the solutions are imaginary. Use ${M("i = \\sqrt{-1}")}, then simplify the radical.</p>
-    <div class="m" style="font-size:1.15rem;overflow-x:auto">${M("\\sqrt{-68} = i\\sqrt{68} = i\\sqrt{4\\cdot 17} = 2i\\sqrt{17}", true)}</div>
-    <p class="muted">On a graph, imaginary solutions mean the parabola never crosses the x-axis.</p>
-  </section>
+  <section><h3>Common setups</h3><div class="guide">
+    <div><span>Dropped object hits the ground</span><b>${M("-16t^2 + h_0 = 0")}</b></div>
+    <div><span>Thrown or hit object hits the ground</span><b>${M("-16t^2 + v_0t + h_0 = 0")}</b></div>
+    <div><span>Fence on 3 sides (wall on the 4th)</span><b>${M("w(F - 2w) = A")}</b></div>
+    <div><span>Right triangle, legs add to S</span><b>${M("x^2 + (S - x)^2 = c^2")}</b></div>
+    <div><span>Two numbers with sum S and product P</span><b>${M("x(S - x) = P")}</b></div>
+    <div><span>Rectangle with area A</span><b>${M("w \\cdot \\text{length} = A")}</b></div>
+  </div></section>
+  <section><h3>How to pick the method</h3><div class="guide">
+    <div><span>No b term, like −16t² + 50 = 0</span><b>Taking square roots</b></div>
+    <div><span>Equal to zero, and factors of a·c add to b</span><b>Factoring</b></div>
+    <div><span>b² − 4ac isn't a perfect square</span><b>Quadratic formula</b></div>
+    <div><span>Supporting or checking your answer</span><b>Graphing, with key points labeled</b></div>
+  </div></section>
   <section><h3>How to type answers</h3><div class="typing">
-    <code>3, -2</code><span>Two solutions: separate them with a comma</span>
-    <code>5/2</code><span>Fractions use a slash</span>
-    <code>+- sqrt(7)</code><span>Plus or minus a square root (or use the √ and ± buttons)</span>
-    <code>-2 +- 3i</code><span>Imaginary solutions use i (or use the i button)</span>
-    <code>(5 +- i sqrt(83))/6</code><span>Put the whole top of a fraction in parentheses</span>
-    <code>2i sqrt(17)</code><span>A number times i times a root</span>
+    <code>1.77</code><span>Decimals rounded to the nearest hundredth</span>
+    <code>6600</code><span>Whole numbers (6,600 works too)</span>
+    <code>sqrt(50)/4</code><span>Exact answers work too</span>
+    <code>16.12</code><span>One value per box. Units are optional.</span>
   </div></section>`;
   $("#helpBody").innerHTML = h;
-}
-function methodHint(q) {
-  return {
-    factor: "Is it equal to zero? Take out any GCF, then check: are there factors of a·c that add to b?",
-    sqrt: `Is there a b term? If not, can you get ${q.v}² by itself?`,
-    binom: `The ${q.v} is trapped inside a square, with only a constant on the other side.`,
-    formula: "Set it equal to zero, then find b² − 4ac. If it isn't a perfect square (or it's negative), it won't factor.",
-  }[q.skill];
 }
 
 /* ---------- Events ---------- */
@@ -1005,25 +1046,31 @@ document.addEventListener("click", e => {
   }
   if (!q) return;
   const r = R(q.id);
+  if (t.dataset.eq !== undefined && r.eqStatus === null) { r.eqPick = +t.dataset.eq; renderQuestion(); save(); return; }
+  if (t.id === "checkEq" && r.eqPick !== null) { r.eqStatus = q.choices[r.eqPick].ok ? "right" : "wrong"; render(); return; }
   if (t.dataset.method && r.methodStatus === null) { r.method = t.dataset.method; renderQuestion(); save(); return; }
   if (t.id === "checkMethod" && r.method) {
-    r.methodStatus = methodStatusFor(q, r.method);
-    r.methodOk = r.methodStatus !== "wrong"; render(); setTimeout(() => $("#ans") && $("#ans").focus(), 0); return;
+    r.methodStatus = methodStatusFor(q, r.method); r.methodOk = r.methodStatus !== "wrong";
+    lastField = 0; render(); setTimeout(() => $("#ans0") && $("#ans0").focus(), 0); return;
   }
   if (t.dataset.ins !== undefined) { insertAtCursor(t.dataset.ins); return; }
   if (t.id === "checkAns") { doCheck(); return; }
   if (t.id === "reveal") { r.revealed = true; r.last = { status: "revealed" }; if (r.firstOk === null) r.firstOk = false; render(); return; }
 });
+document.addEventListener("focusin", e => { if (e.target.classList && e.target.classList.contains("ans")) lastField = +e.target.dataset.field; });
 document.addEventListener("input", e => {
-  if (e.target.id === "ans") { const q = state.questions[state.cur]; state.drafts = state.drafts || {}; state.drafts[q.id] = e.target.value; updatePreview(); save(); }
+  if (e.target.classList && e.target.classList.contains("ans")) {
+    const q = state.questions[state.cur]; state.drafts = state.drafts || {};
+    const d = state.drafts[q.id] = state.drafts[q.id] || []; d[+e.target.dataset.field] = e.target.value; save();
+  }
 });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !$("#helpModal").hidden) closeHelp();
-  if (e.key === "Enter" && e.target.id === "ans") { e.preventDefault(); doCheck(); }
+  if (e.key === "Enter" && e.target.classList && e.target.classList.contains("ans")) { e.preventDefault(); doCheck(); }
 });
 $("#helpModal").addEventListener("click", e => { if (e.target.id === "helpModal") closeHelp(); });
 function insertAtCursor(txt) {
-  const inp = $("#ans"); if (!inp || inp.disabled) return;
+  const inp = $("#ans" + lastField) || $("#ans0"); if (!inp || inp.disabled) return;
   const s = inp.selectionStart ?? inp.value.length, en = inp.selectionEnd ?? inp.value.length;
   inp.value = inp.value.slice(0, s) + txt + inp.value.slice(en);
   const pos = s + (txt === "()" ? 1 : txt.length);
@@ -1031,19 +1078,20 @@ function insertAtCursor(txt) {
   inp.dispatchEvent(new Event("input", { bubbles: true }));
 }
 function doCheck() {
-  const q = state.questions[state.cur], r = R(q.id), inp = $("#ans");
-  if (!inp || r.solved || r.revealed) return;
+  const q = state.questions[state.cur], r = R(q.id);
+  if (!$("#ans0") || r.solved || r.revealed) return;
+  const raws = q.fields.map((f, i) => $("#ans" + i).value);
   let res;
-  try { res = checkAnswer(q, inp.value); } catch (err) { res = { status: "error", msg: err.message }; }
+  try { res = checkAnswer(q, raws); } catch (err) { res = { status: "error", msg: err.message }; }
   r.last = res;
   if (res.status !== "error") {
     r.attempts++;
     if (r.attempts === 1) r.firstOk = res.status === "correct";
-    if (res.cx) r.cxIssue = true;
+    if (res.interp) r.interpIssue = true;
     if (res.status === "correct") r.solved = true;
   }
   render();
-  const again = $("#ans"); if (again && !again.disabled) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+  const again = $("#ans" + lastField); if (again && !again.disabled) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
 }
 
 /* ---------- Whiteboard ---------- */
