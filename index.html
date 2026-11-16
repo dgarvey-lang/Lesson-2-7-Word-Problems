@@ -257,13 +257,21 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ck.fn { font-family: var(--font-body); font-size: .85rem; font-weight: 600; }
 .ck.eq { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
 
+.method.defc { justify-content: center; font-size: .95rem; }
+.work-grid { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.work-grid .answer-row input { flex: 0 1 110px; width: 110px; }
+.score-row.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+a.btn { text-decoration: none; color: inherit; }
+.graph a { color: var(--accent); font-weight: 600; }
+.top-actions { flex-wrap: wrap; }
+
 @media (max-width: 980px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .board { position: relative; top: auto; height: 520px; }
 }
 @media (max-width: 560px) {
   .methods { grid-template-columns: minmax(0, 1fr); }
-  .score-row { grid-template-columns: minmax(0, 1fr); }
+  .score-row, .score-row.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .guide div { grid-template-columns: minmax(0, 1fr); }
   .equation { font-size: 1.3rem; }
   .panel { padding: 16px; }
@@ -278,11 +286,12 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 <header class="top" id="top">
   <div class="brand">
     <h1>Quadratic Word Problems</h1>
-    <span>Write the equation, pick a method, solve and interpret.</span>
+    <span>Define the variable, write the equation, solve and interpret.</span>
   </div>
   <nav class="dots" id="dots" aria-label="Questions"></nav>
   <div class="top-actions">
     <button class="btn" id="calcBtn" type="button" aria-expanded="false">Calculator</button>
+    <a class="btn" href="https://www.desmos.com/calculator" target="_blank" rel="noopener noreferrer">Desmos ↗</a>
     <button class="btn help" id="helpBtn" type="button">? Help</button>
     <button class="btn" id="summaryBtn" type="button">Summary</button>
   </div>
@@ -397,6 +406,10 @@ const SKILLS = {
 };
 
 /* ---------- Question builders ---------- */
+const unitWord = u => ({ in: "inches", m: "meters", ft: "feet", cm: "centimeters" }[u] || u);
+function defChoices(v, right, wrongs) {
+  return shuffle([{ text: `${v} = ${right}`, ok: true }, ...wrongs.map(([t, why]) => ({ text: `${v} = ${t}`, why }))]);
+}
 /* Falling object: h(t) = −16t² + H, find when h = k */
 function qDrop({ H, k = 0, obj, text, src }) {
   const diff = H - k, root = Math.sqrt(diff / 16), [s, t] = simpRad(diff);
@@ -417,7 +430,12 @@ function qDrop({ H, k = 0, obj, text, src }) {
     { t: "Interpret: time can't be negative, so reject the negative answer.", m: `t ${ap(root)}${T(" seconds")}` },
   ];
   return {
-    skill: "drop", src, text, choices, best: "sqrt", alsoOk: [],
+    skill: "drop", src, text, choices,
+    defs: defChoices("t", `the time, in seconds, after the ${obj} starts to fall`, [
+      [`the height of the ${obj}, in feet`, "The height is h(t), the output of the model. The question asks how long, so the variable is time."],
+      [`the distance the ${obj} falls, in feet`, "The question asks how long it takes, so the variable is time in seconds."],
+      [`the speed of the ${obj}`, "Speed isn't part of this model. The question asks how long, so t is time in seconds."]]),
+    work: { kind: "sq", v: "t", val: diff / 16, show: `t^2 = ${frac(diff, 16)} = ${+(diff / 16).toFixed(4)}`, hint: `Subtract ${H} from both sides, then divide both sides by −16.`, next: "Now take the square root of both sides." }, best: "sqrt", alsoOk: [],
     eqHint: k ? `The ${obj} stops when it is ${k} feet above the ground, not at the ground. What should h(t) equal?` : "The ground is where the height is 0.",
     why: "There's no t term (no b term), so isolate t² and take the square root.",
     fields: [{ label: "t", unit: "seconds" }], sets: [[root]], reject: [-root], rejectMsg: "Time can't be negative. Keep only the positive solution.",
@@ -427,7 +445,7 @@ function qDrop({ H, k = 0, obj, text, src }) {
   };
 }
 /* Thrown / hit object: h(t) = −16t² + bt + c, find when h = 0 */
-function qProj({ b, c, obj, ground = "the ground", text, src }) {
+function qProj({ b, c, obj, ground = "the ground", verb = "starts moving", text, src }) {
   const a = -16, D = b * b - 4 * a * c, sq = Math.sqrt(D), r1 = (-b + sq) / (2 * a), r2 = (-b - sq) / (2 * a);
   const pos = Math.max(r1, r2), neg = Math.min(r1, r2), eq = `${poly([a, b, c], "t")} = 0`;
   const choices = shuffle([
@@ -444,7 +462,12 @@ function qProj({ b, c, obj, ground = "the ground", text, src }) {
     { t: "Interpret: time can't be negative, so reject the negative answer.", m: `t ${ap(pos)}${T(" seconds")}` },
   ];
   return {
-    skill: "projectile", src, text, choices, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
+    skill: "projectile", src, text, choices,
+    defs: defChoices("t", `the time, in seconds, after the ${obj} ${verb}`, [
+      [`the height of the ${obj}, in feet`, "The height is h(t), the output of the model. The question asks how much time, so the variable is time."],
+      [`how far the ${obj} travels sideways`, "Sideways distance isn't in this model. The question asks how much time, so t is time in seconds."],
+      [`the speed of the ${obj}`, "Speed isn't the unknown here. The question asks how much time, so t is time in seconds."]]),
+    work: { kind: "abc", v: "t", a, b, c, disc: true, next: "Now substitute into the quadratic formula." }, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
     eqHint: `Touching ${ground} means the height is 0.`,
     why: `There's a t term, and b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`,
     fields: [{ label: "t", unit: "seconds" }], sets: [[pos]], reject: [neg], rejectMsg: "Time can't be negative. Keep only the positive solution.",
@@ -472,7 +495,12 @@ function qFence({ F, A, unit = "m", place = "garden", wall = "fence", text, src 
     { t: "Interpret: both widths are positive and both lengths are positive, so both gardens work.", m: `${d2(w1)}${T(" " + unit)} \\times ${d2(l1)}${T(" " + unit)}${OR}${d2(w2)}${T(" " + unit)} \\times ${d2(l2)}${T(" " + unit)}` },
   ];
   return {
-    skill: "fence", src, text, choices, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
+    skill: "fence", src, text, choices,
+    defs: defChoices("w", `the length of each side that touches the ${wall}, in ${unitWord(unit)}`, [
+      [`the area of the ${place}`, `The area is given (${A} ${unit}²). The unknowns are the side lengths.`],
+      ["the total amount of fencing", `The fencing is given (${F} ${unit}). The unknowns are the side lengths.`],
+      [`the perimeter of the ${place}`, `The unknowns are the side lengths. Let w be each side touching the ${wall}.`]]),
+    work: { kind: "abc", v: "w", a: 2, b: -F, c: A, disc: true, next: "Now substitute into the quadratic formula." }, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
     eqHint: `Draw it! The ${wall} is one side, so the fencing covers only three sides: two widths (w) and one length.`,
     why: `After you expand and set it equal to zero, b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`,
     fields: [{ label: "w", unit: `${unit} (each side touching the ${wall})` }, { label: "l", unit: `${unit} (side parallel to the ${wall})` }],
@@ -501,7 +529,12 @@ function qTri({ S, c, unit = "in", text, src }) {
     { t: `Interpret: if one leg is ${d2(x1)}, the other is ${S} − ${d2(x1)} = ${d2(x2)}. The two solutions are the two legs.`, m: `${d2(x1)}${T(" " + unit)}${T(" and ")}${d2(x2)}${T(" " + unit)}` },
   ];
   return {
-    skill: "triangle", src, text, choices, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
+    skill: "triangle", src, text, choices,
+    defs: defChoices("x", `the length of one leg, in ${unitWord(unit)}`, [
+      ["the length of the hypotenuse", `The hypotenuse is given (${c} ${unit}). The unknowns are the legs.`],
+      ["the sum of the legs", `The sum is given (${S} ${unit}). Let x be the length of one leg.`],
+      ["the area of the triangle", "The question asks for the legs, so let x be the length of one leg."]]),
+    work: { kind: "abc", v: "x", a: 2, b: B, c: C, disc: true, next: "Now substitute into the quadratic formula." }, best: isSq(D) ? "factor" : "formula", alsoOk: isSq(D) ? ["formula"] : [],
     eqHint: `Call one leg x. Since the legs add to ${S}, what is the other leg? Then use a² + b² = c².`,
     why: `After you expand and set it equal to zero, b² − 4ac = ${D} isn't a perfect square, so it won't factor. Use the quadratic formula.`,
     fields: [{ label: "Leg 1", unit }, { label: "Leg 2", unit }], sets: [[x1, x2], [x2, x1]], reject: [], rejectMsg: "",
@@ -527,7 +560,12 @@ function qNum({ m, n, text, src }) {
     { t: `Interpret: if x = ${m}, the other number is ${S} − ${m} = ${n} (and the reverse). Either way, the numbers are ${m} and ${n}.`, m: `${m}${T(" and ")}${n}` },
   ];
   return {
-    skill: "numbers", src, text, choices, best: "factor", alsoOk: [],
+    skill: "numbers", src, text, choices,
+    defs: defChoices("x", "the first number", [
+      ["the sum of the two numbers", `The sum is given (${S}). Let x be one of the numbers.`],
+      ["the product of the two numbers", `The product is given (${P}). Let x be one of the numbers.`],
+      ["the difference of the two numbers", "The question asks for the numbers themselves, so let x be one of them."]]),
+    work: { kind: "abc", v: "x", a: 1, b: -S, c: P, disc: false, next: "Now factor and set each factor equal to zero." }, best: "factor", alsoOk: [],
     eqHint: `Call the first number x. If they add to ${S}, the second number is ${S} − x. Now write their product.`,
     why: `Set it equal to zero: x² − ${S}x + ${P} = 0. Two numbers multiply to ${P} and add to −${S}, so it factors.`,
     fields: [{ label: "First number", unit: "" }, { label: "Second number", unit: "" }], sets: [[m, n], [n, m]], reject: [], rejectMsg: "",
@@ -559,7 +597,12 @@ function qRect({ k, d, w0, unit = "yards", thing = "field", text, src }) {
   steps.push({ t: "Set each factor equal to zero.", m: `w = ${w0}${OR}w = ${frac(-l0, k)}` });
   steps.push({ t: `Interpret: a width can't be negative, so w = ${w0}. The length is ${k}(${w0}) ${d < 0 ? "−" : "+"} ${Math.abs(d)} = ${l0}.`, m: `${w0}${T(" " + unit + " by ")}${l0}${T(" " + unit)}` });
   return {
-    skill: "rect", src, text, choices, best: "factor", alsoOk: ["formula"],
+    skill: "rect", src, text, choices,
+    defs: defChoices("w", `the width of the ${thing}, in ${unit}`, [
+      [`the area of the ${thing}`, `The area is given (${A.toLocaleString("en-US")}). Let w be the width, then write the length using w.`],
+      [`the perimeter of the ${thing}`, "Perimeter isn't part of this problem. Let w be the width."],
+      ["how much longer the length is than the width", "Let w be the width itself, then write the length using w."]]),
+    work: { kind: "abc", v: "w", a: k, b: d, c: -A, disc: false, next: `Now factor${d % k === 0 ? ` (take out the GCF, ${k}, first)` : ""} and set each factor equal to zero.` }, best: "factor", alsoOk: ["formula"],
     eqHint: `Let w be the width. Write the length using w, then use Area = width × length.`,
     why: `Set it equal to zero${d % k === 0 ? ` and factor out the GCF, ${k}` : ""}. It factors, so factoring works. With numbers this big, the quadratic formula is a fine choice too.`,
     fields: [{ label: "width", unit }, { label: "length", unit }], sets: [[w0, l0]], reject: [neg],
@@ -577,7 +620,7 @@ function startingSet() {
       text: "Suppose I hold a Biology book out the window that is 50 feet off the ground. The function that models its height, h, over time, t, is h(t) = −16t² + 50. How long would it take to hit the ground?" }),
     qDrop({ H: 50, k: 5, obj: "book", src: "Problem B",
       text: "Suppose the same book is dropped, but it hits the roof of a 5-foot-tall car. How long would it take until the book hits the car? (The model is still h(t) = −16t² + 50.)" }),
-    qProj({ b: -55, c: 12, obj: "ball", ground: "the court", src: "Problem C",
+    qProj({ b: -55, c: 12, obj: "ball", ground: "the court", verb: "is spiked", src: "Problem C",
       text: "In a volleyball game, a player on one team spikes the ball over the net when the ball is 12 feet above the court. The equation that models the ball's height, h, after t seconds is h(t) = −16t² − 55t + 12. Players on the opposing team must hit the ball back over the net before it touches the court. How much time do the opposing players have to hit the spiked ball?" }),
     qFence({ F: 40, A: 125, unit: "m", src: "Problem D",
       text: "I am going to put a garden against a pre-existing fence. I have 40 meters of fencing and want the area of the garden to be 125 m². What will the dimensions of the garden be?" }),
@@ -597,10 +640,10 @@ const DROP_CTX = [
   { obj: "apple", start: H => `An apple falls from a branch ${H} feet above the ground.`, ground: "hit the ground", stop: k => `land on a ${k}-foot-tall shed roof` },
 ];
 const PROJ_CTX = [
-  { obj: "ball", ground: "the ground", up: true, make: (b, c) => `A ball is thrown upward from a ${c}-foot-tall platform. Its height after t seconds is h(t) = ${hText(b, c)}. How long until the ball hits the ground?` },
-  { obj: "ball", ground: "the court", up: false, make: (b, c) => `A volleyball is spiked from ${c} feet above the court. Its height after t seconds is h(t) = ${hText(b, c)}. How much time does the other team have before it touches the court?` },
-  { obj: "diver", ground: "the water", up: true, make: (b, c) => `A diver jumps up from a ${c}-foot platform. Her height after t seconds is h(t) = ${hText(b, c)}. How long until she reaches the water?` },
-  { obj: "rocket", ground: "the ground", up: true, make: (b, c) => `A model rocket launches from a ${c}-foot-tall stand. Its height after t seconds is h(t) = ${hText(b, c)}. How long until it lands?` },
+  { obj: "ball", ground: "the ground", verb: "is thrown", up: true, make: (b, c) => `A ball is thrown upward from a ${c}-foot-tall platform. Its height after t seconds is h(t) = ${hText(b, c)}. How long until the ball hits the ground?` },
+  { obj: "ball", ground: "the court", verb: "is spiked", up: false, make: (b, c) => `A volleyball is spiked from ${c} feet above the court. Its height after t seconds is h(t) = ${hText(b, c)}. How much time does the other team have before it touches the court?` },
+  { obj: "diver", ground: "the water", verb: "jumps", up: true, make: (b, c) => `A diver jumps up from a ${c}-foot platform. Her height after t seconds is h(t) = ${hText(b, c)}. How long until she reaches the water?` },
+  { obj: "rocket", ground: "the ground", verb: "launches", up: true, make: (b, c) => `A model rocket launches from a ${c}-foot-tall stand. Its height after t seconds is h(t) = ${hText(b, c)}. How long until it lands?` },
 ];
 function hText(b, c) { return `−16t² ${b < 0 ? "−" : "+"} ${Math.abs(b)}t + ${c}`; }
 const FENCE_CTX = [
@@ -624,7 +667,7 @@ const GEN = {
     for (;;) {
       const ctx = pick(PROJ_CTX), b = ctx.up ? ri(5, 60) : -ri(20, 60), c = ri(5, 60), D = b * b + 64 * c;
       if (isSq(D)) continue;
-      return qProj({ b, c, obj: ctx.obj, ground: ctx.ground, text: ctx.make(b, c) });
+      return qProj({ b, c, obj: ctx.obj, ground: ctx.ground, verb: ctx.verb, text: ctx.make(b, c) });
     }
   },
   fence() {
@@ -788,16 +831,16 @@ function graphSVG(q) {
   s += `<text class="g-title" transform="translate(14 ${mT + ph / 2}) rotate(-90)" text-anchor="middle">${esc(g.yl)}</text></svg>`;
   const fx = poly(g.f, "x");
   return `<div class="graph"><h4>Check with a graph</h4>${s}
-    <p class="muted">Try it in Desmos: graph ${M("y = " + fx)}${level ? ` and ${M("y = " + level)}` : ""}, then click the ${level ? "intersection" : "x-intercept"}${keys.length > 1 ? "s" : ""}.</p></div>`;
+    <p class="muted"><a href="${DESMOS}" target="_blank" rel="noopener noreferrer">Open Desmos ↗</a> and graph ${M("y = " + fx)}${level ? ` and ${M("y = " + level)}` : ""}, then click the ${level ? "intersection" : "x-intercept"}${keys.length > 1 ? "s" : ""}.</p></div>`;
 }
 
 /* ---------- State ---------- */
-const STORE = "wordProblemsReview.v1";
+const STORE = "wordProblemsReview.v2";
 let state = load() || fresh();
-function fresh() { const qs = startingSet(); return { questions: qs, res: {}, cur: 0, view: "q", nextId: qs.length + 1, drafts: {} }; }
+function fresh() { const qs = startingSet(); return { questions: qs, res: {}, cur: 0, view: "q", nextId: qs.length + 1, drafts: {}, wdrafts: {} }; }
 function load() { try { const s = JSON.parse(localStorage.getItem(STORE)); return s && Array.isArray(s.questions) && s.questions.length ? s : null; } catch (e) { return null; } }
 function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable */ } }
-const R = id => (state.res[id] = state.res[id] || { eqPick: null, eqStatus: null, method: null, methodOk: null, methodStatus: null, attempts: 0, firstOk: null, solved: false, revealed: false, hints: 0, interpIssue: false, last: null });
+const R = id => (state.res[id] = state.res[id] || { defPick: null, defStatus: null, eqPick: null, eqStatus: null, workStatus: null, workTries: 0, workFirstOk: null, workLast: null, method: null, methodOk: null, methodStatus: null, attempts: 0, firstOk: null, solved: false, revealed: false, hints: 0, interpIssue: false, last: null });
 
 /* ---------- Rendering ---------- */
 const $ = s => document.querySelector(s);
@@ -805,9 +848,9 @@ const work = $("#work");
 let lastField = 0;
 function dotClass(q) {
   const r = state.res[q.id]; if (!r) return "";
-  if (r.solved && r.firstOk && r.eqStatus === "right") return "good";
+  if (r.solved && r.firstOk && r.eqStatus === "right" && r.defStatus === "right" && r.workFirstOk) return "good";
   if (r.solved) return "retry";
-  if (r.revealed || r.attempts || r.eqStatus === "wrong") return "bad";
+  if (r.revealed || r.attempts || r.eqStatus === "wrong" || r.defStatus === "wrong" || r.workTries) return "bad";
   return "";
 }
 function renderDots() {
@@ -836,77 +879,129 @@ function methodExtra(q, r) {
   return "";
 }
 function stepHead(n, txt) { return `<h3><span class="step-num">${n}</span>${txt}</h3>`; }
+const DESMOS = "https://www.desmos.com/calculator";
+const desmosLink = (txt = "Open Desmos ↗") => `<a class="btn" href="${DESMOS}" target="_blank" rel="noopener noreferrer">${txt}</a>`;
+function workFields(q) {
+  const w = q.work;
+  if (w.kind === "sq") return [{ label: `${w.v}²` }];
+  const f = [{ label: "a" }, { label: "b" }, { label: "c" }];
+  if (w.disc) f.push({ label: "b² − 4ac" });
+  return f;
+}
+function workShow(q) {
+  const w = q.work;
+  if (w.kind === "sq") return w.show;
+  return `${poly([w.a, w.b, w.c], w.v)} = 0\\qquad a = ${w.a},\; b = ${w.b},\; c = ${w.c}` + (w.disc ? `\\qquad b^2 - 4ac = ${w.b * w.b - 4 * w.a * w.c}` : "");
+}
+function checkWork(q, raws) {
+  const labels = workFields(q).map(f => f.label), w = q.work;
+  const vals = raws.map((x, i) => { try { return parseValue(x); } catch (e) { throw new Error(`${labels[i]}: ${e.message}`); } });
+  const near = (x, y) => Math.abs(x - y) <= 1e-6 * Math.max(1, Math.abs(y));
+  if (w.kind === "sq") return Math.abs(vals[0] - w.val) <= 0.011 ? { ok: true } : { ok: false, msg: `Not quite. ${w.hint}` };
+  const [a, b, c] = vals;
+  if (Math.abs(a) < 1e-12) return { ok: false, msg: "a can't be 0. It's the number in front of the squared term." };
+  const lam = a / w.a;
+  if (!near(b, lam * w.b) || !near(c, lam * w.c))
+    return { ok: false, msg: "Check your standard form. Distribute, move everything to one side so it equals 0, combine like terms, then read a, b and c (keep the signs)." };
+  if (w.disc && !near(vals[3], b * b - 4 * a * c))
+    return { ok: false, abcOk: true, msg: `Your a, b and c are right. Now recheck the discriminant: b² − 4ac = (${fmt(b)})² − 4(${fmt(a)})(${fmt(c)}).` };
+  return { ok: true, equiv: Math.abs(lam - 1) > 1e-9 };
+}
+function choiceButtons(list, pick, done, attr, renderItem, cls = "") {
+  return list.map((c, i) => {
+    let k = "";
+    if (done) { if (c.ok) k = "right"; else if (i === pick) k = "wrong"; }
+    else if (pick === i) k = "sel";
+    return `<button class="method ${cls} ${k}" ${attr}="${i}" type="button" role="radio" aria-checked="${pick === i}" ${done ? "disabled" : ""}>${renderItem(c)}</button>`;
+  }).join("");
+}
 function renderQuestion() {
-  const q = state.questions[state.cur], r = R(q.id), n = state.questions.length;
-  const eqDone = r.eqStatus !== null, methodDone = r.methodStatus !== null;
+  const q = state.questions[state.cur], r = R(q.id), n = state.questions.length, v = q.work.v;
+  const help = `<button class="btn help" data-help type="button">? Help</button>`;
   let h = `<div class="panel">
     <div class="q-head"><span class="eyebrow">Question ${state.cur + 1} of ${n}</span><span style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge">${esc(SKILLS[q.skill].name)}</span>${q.src ? `<span class="badge">${esc(q.src)}</span>` : ""}${q.extra ? `<span class="badge">Extra practice</span>` : ""}</span></div>
-    <p class="problem">${esc(q.text)}</p>
-    <div class="step">${stepHead(1, "Which equation models this situation?")}
-    <div class="methods" role="radiogroup" aria-label="Equation">`;
-  q.choices.forEach((c, i) => {
-    let cls = "";
-    if (eqDone) { if (c.ok) cls = "right"; else if (i === r.eqPick) cls = "wrong"; }
-    else if (r.eqPick === i) cls = "sel";
-    h += `<button class="method eqc ${cls}" data-eq="${i}" type="button" role="radio" aria-checked="${r.eqPick === i}" ${eqDone ? "disabled" : ""}>${M(c.tex)}</button>`;
-  });
+    <p class="problem">${esc(q.text)}</p>`;
+  const end = () => {
+    h += `</div>`;
+    const last = state.cur === n - 1;
+    h += `<div class="nav"><button class="btn" id="prev" type="button" ${state.cur === 0 ? "disabled" : ""}>← Previous</button>
+      ${last ? `<button class="btn primary" id="toSummary" type="button">See my summary →</button>` : `<button class="btn primary" id="next" type="button">Next question →</button>`}</div>`;
+    work.innerHTML = h;
+  };
+  /* Step 1: define the variable */
+  h += `<div class="step">${stepHead(1, `Define the variable. What should ${v} stand for?`)}<div class="methods defs" role="radiogroup" aria-label="Variable">
+    ${choiceButtons(q.defs, r.defPick, r.defStatus !== null, "data-def", c => esc(c.text), "defc")}</div>`;
+  if (r.defStatus === null) { h += `<div class="actions"><button class="btn primary" id="checkDef" type="button" ${r.defPick === null ? "disabled" : ""}>Check variable</button>${help}</div></div>`; return end(); }
+  h += r.defStatus === "right"
+    ? feedback("good", "✓", `<strong>Yes.</strong> Let ${esc(q.defs.find(c => c.ok).text)}. Always write this down before you start.`)
+    : feedback("bad", "✗", `<strong>Not quite.</strong> ${esc(q.defs[r.defPick].why)} The correct definition is highlighted in green.`);
   h += `</div>`;
-  if (!eqDone) {
-    h += `<div class="actions"><button class="btn primary" id="checkEq" type="button" ${r.eqPick === null ? "disabled" : ""}>Check equation</button>
-      <button class="btn help" data-help type="button">? Help</button></div></div></div>`;
-  } else {
-    const pickC = q.choices[r.eqPick];
-    h += r.eqStatus === "right"
-      ? feedback("good", "✓", `<strong>Yes, that's the right equation.</strong> ${esc(q.steps[0].t)}`)
-      : feedback("bad", "✗", `<strong>Not quite.</strong> ${esc(pickC.why)} The correct equation is highlighted in green.`);
-    h += `</div><div class="step">${stepHead(2, "What is the best method to solve it?")}<div class="methods" role="radiogroup" aria-label="Method">`;
-    for (const m of METHODS) {
-      let cls = "";
-      if (methodDone) { if (m.id === q.best) cls = "right"; else if (m.id === r.method) cls = r.methodStatus === "ok" ? "ok" : "wrong"; }
-      else if (r.method === m.id) cls = "sel";
-      h += `<button class="method ${cls}" data-method="${m.id}" type="button" role="radio" aria-checked="${r.method === m.id}" ${methodDone ? "disabled" : ""}><b>${m.label}</b><small>${m.sub}</small></button>`;
-    }
-    h += `</div>`;
-    if (!methodDone) {
-      h += `<div class="actions"><button class="btn primary" id="checkMethod" type="button" ${r.method ? "" : "disabled"}>Check method</button>
-        <button class="btn help" data-help type="button">? Help</button></div>`;
-    } else {
-      const st = r.methodStatus;
-      const head = st === "right" ? "Yes, that's the best method." : st === "ok" ? `That works too. The best method is <strong>${methodLabel(q.best)}</strong>.` : `Not the best choice. The best method is <strong>${methodLabel(q.best)}</strong>.`;
-      h += feedback(st === "right" ? "good" : st === "ok" ? "warn" : "bad", st === "wrong" ? "✗" : "✓", `${head} ${esc(q.why)}${esc(methodExtra(q, r))}`);
-    }
-    h += `</div>`;
-    if (methodDone) {
-      const finished = r.solved || r.revealed, drafts = (state.drafts && state.drafts[q.id]) || [];
-      h += `<div class="step">${stepHead(3, "Solve and interpret. Round to the nearest hundredth.")}
-        <p class="hint-line" style="margin:0">Only enter answers that make sense in the situation.</p>
-        ${q.fields.map((f, i) => `<div class="answer-row"><label for="ans${i}">${esc(f.label)} =</label>
-          <input id="ans${i}" class="ans" data-field="${i}" type="text" autocomplete="off" spellcheck="false" inputmode="decimal" placeholder="e.g. 1.77" value="${esc(drafts[i] || "")}" ${finished ? "disabled" : ""}>
-          ${f.unit ? `<span class="unit">${esc(f.unit)}</span>` : ""}</div>`).join("")}
-        ${finished ? "" : `<div class="keypad">
-          <button class="key" data-ins="√" type="button" title="Square root">√</button>
-          <button class="key" data-ins="()" type="button" title="Parentheses">( )</button>
-          <button class="key" data-ins="/" type="button" title="Fraction bar">/</button>
-          <button class="key" data-ins="-" type="button" title="Negative">−</button>
-          <button class="key" data-ins="." type="button" title="Decimal point">.</button>
-        </div>
-        <div class="actions"><button class="btn primary" id="checkAns" type="button">Check answer</button>
-          ${r.attempts ? `<button class="btn" id="reveal" type="button">Show solution</button>` : ""}
-          <button class="btn help" data-help type="button">? Help</button></div>`}
-        ${answerFeedback(r)}
-      </div>`;
-      if (finished) {
-        h += `<div class="solution"><h4>Worked solution</h4><ol>${q.steps.map(s => `<li><p>${esc(s.t)}</p><div class="m">${M(s.m)}</div></li>`).join("")}</ol>
-          <p style="margin:12px 0 0"><b>Answer:</b> ${M(q.ans)}</p>
-          <p style="margin:8px 0 0"><b>Interpretation:</b> ${esc(q.interp)}</p></div>${graphSVG(q)}`;
-      }
-    }
-    h += `</div>`;
+  /* Step 2: equation */
+  h += `<div class="step">${stepHead(2, "Which equation models this situation?")}<div class="methods" role="radiogroup" aria-label="Equation">
+    ${choiceButtons(q.choices, r.eqPick, r.eqStatus !== null, "data-eq", c => M(c.tex), "eqc")}</div>`;
+  if (r.eqStatus === null) { h += `<div class="actions"><button class="btn primary" id="checkEq" type="button" ${r.eqPick === null ? "disabled" : ""}>Check equation</button>${help}</div></div>`; return end(); }
+  h += r.eqStatus === "right"
+    ? feedback("good", "✓", `<strong>Yes, that's the right equation.</strong> ${esc(q.steps[0].t)}`)
+    : feedback("bad", "✗", `<strong>Not quite.</strong> ${esc(q.choices[r.eqPick].why)} The correct equation is highlighted in green.`);
+  h += `</div>`;
+  /* Step 3: method */
+  h += `<div class="step">${stepHead(3, "What is the best method to solve it?")}<div class="methods" role="radiogroup" aria-label="Method">`;
+  const methodDone = r.methodStatus !== null;
+  for (const m of METHODS) {
+    let cls = "";
+    if (methodDone) { if (m.id === q.best) cls = "right"; else if (m.id === r.method) cls = r.methodStatus === "ok" ? "ok" : "wrong"; }
+    else if (r.method === m.id) cls = "sel";
+    h += `<button class="method ${cls}" data-method="${m.id}" type="button" role="radio" aria-checked="${r.method === m.id}" ${methodDone ? "disabled" : ""}><b>${m.label}</b><small>${m.sub}</small></button>`;
   }
-  const last = state.cur === n - 1;
-  h += `<div class="nav"><button class="btn" id="prev" type="button" ${state.cur === 0 ? "disabled" : ""}>← Previous</button>
-    ${last ? `<button class="btn primary" id="toSummary" type="button">See my summary →</button>` : `<button class="btn primary" id="next" type="button">Next question →</button>`}</div>`;
-  work.innerHTML = h;
+  h += `</div>`;
+  if (!methodDone) { h += `<div class="actions"><button class="btn primary" id="checkMethod" type="button" ${r.method ? "" : "disabled"}>Check method</button>${help}</div></div>`; return end(); }
+  const st = r.methodStatus;
+  const head = st === "right" ? "Yes, that's the best method." : st === "ok" ? `That works too. The best method is <strong>${methodLabel(q.best)}</strong>.` : `Not the best choice. The best method is <strong>${methodLabel(q.best)}</strong>.`;
+  h += feedback(st === "right" ? "good" : st === "ok" ? "warn" : "bad", st === "wrong" ? "✗" : "✓", `${head} ${esc(q.why)}${esc(methodExtra(q, r))}`);
+  if (r.method === "graph") h += `<div class="actions">${desmosLink("Graph it in Desmos ↗")}</div>`;
+  h += `</div>`;
+  /* Step 4: work it out */
+  const wf = workFields(q), wd = (state.wdrafts && state.wdrafts[q.id]) || [], workDone = r.workStatus === "right" || r.workStatus === "shown";
+  const prompt = q.work.kind === "sq"
+    ? `Start solving: get ${v}² by itself. What does ${v}² equal?`
+    : `Start solving: write the equation in standard form, a${v}² + b${v} + c = 0. What are a, b and c?${q.work.disc ? " Then find the discriminant." : ""}`;
+  h += `<div class="step">${stepHead(4, "Work it out")}<p class="hint-line" style="margin:0;font-size:.92rem;color:var(--ink)">${esc(prompt)}</p>
+    <div class="work-grid">${wf.map((f, i) => `<div class="answer-row"><label for="wk${i}">${esc(f.label)} =</label><input id="wk${i}" class="wk" data-wk="${i}" type="text" autocomplete="off" spellcheck="false" inputmode="decimal" value="${esc(wd[i] || "")}" ${workDone ? "disabled" : ""}></div>`).join("")}</div>`;
+  if (!workDone) h += `<div class="actions"><button class="btn primary" id="checkWork" type="button">Check work</button>${r.workTries ? `<button class="btn" id="showWork" type="button">Show me</button>` : ""}${help}</div>`;
+  if (r.workLast) {
+    const L = r.workLast;
+    if (L.status === "error") h += feedback("warn", "!", esc(L.msg));
+    else if (L.status === "wrong") h += feedback(L.abcOk ? "warn" : "bad", L.abcOk ? "!" : "✗", `<strong>${L.abcOk ? "Almost." : "Not quite."}</strong> ${esc(L.msg)}`);
+  }
+  if (r.workStatus === "right") h += feedback("good", "✓", `<strong>Correct!</strong> ${r.workLast && r.workLast.equiv ? "You used an equivalent form of the equation, which is fine. " : ""}${esc(q.work.next)}`);
+  if (r.workStatus === "shown") h += feedback("warn", "!", `Here are the values: ${M(workShow(q))}. ${esc(q.work.next)}`);
+  h += `</div>`;
+  if (!workDone) return end();
+  /* Step 5: solve and interpret */
+  const finished = r.solved || r.revealed, drafts = (state.drafts && state.drafts[q.id]) || [];
+  h += `<div class="step">${stepHead(5, "Solve and interpret. Round to the nearest hundredth.")}
+    <p class="hint-line" style="margin:0">Only enter answers that make sense in the situation.</p>
+    ${q.fields.map((f, i) => `<div class="answer-row"><label for="ans${i}">${esc(f.label)} =</label>
+      <input id="ans${i}" class="ans" data-field="${i}" type="text" autocomplete="off" spellcheck="false" inputmode="decimal" placeholder="e.g. 1.77" value="${esc(drafts[i] || "")}" ${finished ? "disabled" : ""}>
+      ${f.unit ? `<span class="unit">${esc(f.unit)}</span>` : ""}</div>`).join("")}
+    ${finished ? "" : `<div class="keypad">
+      <button class="key" data-ins="√" type="button" title="Square root">√</button>
+      <button class="key" data-ins="()" type="button" title="Parentheses">( )</button>
+      <button class="key" data-ins="/" type="button" title="Fraction bar">/</button>
+      <button class="key" data-ins="-" type="button" title="Negative">−</button>
+      <button class="key" data-ins="." type="button" title="Decimal point">.</button>
+    </div>
+    <div class="actions"><button class="btn primary" id="checkAns" type="button">Check answer</button>
+      ${r.attempts ? `<button class="btn" id="reveal" type="button">Show solution</button>` : ""}
+      ${desmosLink("Check in Desmos ↗")}${help}</div>`}
+    ${answerFeedback(r)}
+  </div>`;
+  if (finished) {
+    h += `<div class="solution"><h4>Worked solution</h4><ol>${q.steps.map(s => `<li><p>${esc(s.t)}</p><div class="m">${M(s.m)}</div></li>`).join("")}</ol>
+      <p style="margin:12px 0 0"><b>Answer:</b> ${M(q.ans)}</p>
+      <p style="margin:8px 0 0"><b>Interpretation:</b> ${esc(q.interp)}</p></div>${graphSVG(q)}`;
+  }
+  end();
 }
 function feedback(kind, icon, html) { return `<div class="feedback ${kind}" role="status"><span class="icon">${icon}</span><p>${html}</p></div>`; }
 function answerFeedback(r) {
@@ -925,25 +1020,30 @@ function analyze() {
   for (const key of Object.keys(SKILLS)) {
     const qs = state.questions.filter(q => (key === "interpret" ? q.reject.length : q.skill === key));
     if (!qs.length) continue;
-    const rs = qs.map(q => state.res[q.id]).filter(r => r && (r.attempts || r.revealed || r.methodStatus || r.eqStatus));
+    const rs = qs.map(q => state.res[q.id]).filter(r => r && (r.attempts || r.revealed || r.methodStatus || r.eqStatus || r.defStatus));
+    const defChecked = rs.filter(r => r.defStatus), defRight = defChecked.filter(r => r.defStatus === "right").length;
+    const workChecked = rs.filter(r => r.workStatus), workRight = workChecked.filter(r => r.workFirstOk).length;
     const answered = rs.filter(r => r.attempts || r.revealed);
     const eqChecked = rs.filter(r => r.eqStatus), eqRight = eqChecked.filter(r => r.eqStatus === "right").length;
     const methodChecked = rs.filter(r => r.methodStatus), methodRight = methodChecked.filter(r => r.methodOk).length;
     const firstRight = answered.filter(r => r.firstOk && !r.revealed).length;
     const eqWeak = key !== "interpret" && eqRight < eqChecked.length;
+    const defWeak = key !== "interpret" && defRight < defChecked.length;
+    const workWeak = key !== "interpret" && workRight < workChecked.length;
     const methodWeak = key !== "interpret" && methodRight < methodChecked.length;
     const answerWeak = key === "interpret" ? answered.some(r => r.interpIssue) : answered.some(r => !r.firstOk || r.revealed);
-    const status = !rs.length ? "none" : (eqWeak || methodWeak || answerWeak) ? "weak" : "strong";
-    rows.push({ key, done: answered.length, eqChecked: eqChecked.length, eqRight, methodChecked: methodChecked.length, methodRight, firstRight, status, eqWeak, methodWeak, answerWeak });
+    const status = !rs.length ? "none" : (defWeak || eqWeak || methodWeak || workWeak || answerWeak) ? "weak" : "strong";
+    rows.push({ key, done: answered.length, defChecked: defChecked.length, defRight, defWeak, workChecked: workChecked.length, workRight, workWeak, eqChecked: eqChecked.length, eqRight, methodChecked: methodChecked.length, methodRight, firstRight, status, eqWeak, methodWeak, answerWeak });
   }
   return rows;
 }
 function renderSummary() {
   const rows = analyze(), all = state.questions.map(q => state.res[q.id]).filter(Boolean);
-  const answered = all.filter(r => r.attempts || r.revealed), eqChecked = all.filter(r => r.eqStatus), methodChecked = all.filter(r => r.methodStatus);
+  const answered = all.filter(r => r.attempts || r.revealed), eqChecked = all.filter(r => r.eqStatus), methodChecked = all.filter(r => r.methodStatus), defChecked = all.filter(r => r.defStatus);
   const unanswered = state.questions.length - answered.length, weak = rows.filter(r => r.status === "weak");
   let h = `<div class="panel"><span class="eyebrow">Your results</span><h2 style="font-size:1.5rem;margin-top:4px">Summary</h2>
-    <div class="score-row">
+    <div class="score-row four">
+      <div class="score"><b>${defChecked.filter(r => r.defStatus === "right").length}/${defChecked.length}</b><span>variables defined correctly</span></div>
       <div class="score"><b>${eqChecked.filter(r => r.eqStatus === "right").length}/${eqChecked.length}</b><span>equations set up correctly</span></div>
       <div class="score"><b>${methodChecked.filter(r => r.methodOk).length}/${methodChecked.length}</b><span>best method chosen</span></div>
       <div class="score"><b>${answered.filter(r => r.firstOk && !r.revealed).length}/${answered.length}</b><span>answers right on the first try</span></div>
@@ -951,11 +1051,11 @@ function renderSummary() {
     ${unanswered ? `<p class="muted" style="margin:12px 0 0">${unanswered} question${unanswered === 1 ? " is" : "s are"} not finished yet. Click a number at the top to go back.</p>` : ""}
   </div>`;
   h += `<div class="panel"><h3 style="font-size:1.1rem">What you need more help on</h3>`;
-  if (!answered.length && !eqChecked.length) h += `<p class="muted">Answer some questions first, then come back here to see what to practice.</p>`;
-  else if (!weak.length) h += `<p>Great job! You set up and solved every type correctly on the first try. Add more questions of any type below if you want extra practice.</p>`;
+  if (!answered.length && !eqChecked.length && !defChecked.length) h += `<p class="muted">Answer some questions first, then come back here to see what to practice.</p>`;
+  else if (!weak.length) h += `<p>Great job! You defined, set up and solved every type correctly on the first try. Add more questions of any type below if you want extra practice.</p>`;
   else {
     h += `<div class="help-list">${weak.map(r => {
-      const why = [r.eqWeak ? "writing the equation" : "", r.methodWeak ? "choosing the method" : "", r.answerWeak ? (r.key === "interpret" ? "keeping only answers that make sense" : "getting the answer") : ""].filter(Boolean).join(", ");
+      const why = [r.defWeak ? "defining the variable" : "", r.eqWeak ? "writing the equation" : "", r.methodWeak ? "choosing the method" : "", r.workWeak ? "the setup work" : "", r.answerWeak ? (r.key === "interpret" ? "keeping only answers that make sense" : "getting the answer") : ""].filter(Boolean).join(", ");
       return `<div class="help-item"><div><b>${SKILLS[r.key].name}</b><p>${why ? `Trouble with ${why}. ` : ""}${esc(SKILLS[r.key].tip)}</p></div>
         <button class="btn primary" data-more="${r.key}" type="button">+ Add 3 more</button></div>`;
     }).join("")}</div>
@@ -963,10 +1063,12 @@ function renderSummary() {
   }
   h += `</div>`;
   h += `<div class="panel"><h3 style="font-size:1.1rem">Results by problem type</h3><div class="table-wrap"><table>
-    <thead><tr><th>Type</th><th>Equation</th><th>Method</th><th>1st try</th><th>Status</th><th></th></tr></thead><tbody>
+    <thead><tr><th>Type</th><th>Variable</th><th>Equation</th><th>Method</th><th>Work</th><th>Answer</th><th>Status</th><th></th></tr></thead><tbody>
     ${rows.map(r => `<tr><td>${SKILLS[r.key].name}</td>
+      <td class="num">${r.key === "interpret" ? "—" : `${r.defRight}/${r.defChecked}`}</td>
       <td class="num">${r.key === "interpret" ? "—" : `${r.eqRight}/${r.eqChecked}`}</td>
       <td class="num">${r.key === "interpret" ? "—" : `${r.methodRight}/${r.methodChecked}`}</td>
+      <td class="num">${r.key === "interpret" ? "—" : `${r.workRight}/${r.workChecked}`}</td>
       <td class="num">${r.firstRight}/${r.done}</td>
       <td><span class="pill ${r.status}">${r.status === "weak" ? "Needs practice" : r.status === "strong" ? "Got it" : "Not started"}</span></td>
       <td><button class="btn" data-more="${r.key}" type="button" style="padding:5px 10px;font-size:.8rem">+ 3 more</button></td></tr>`).join("")}
@@ -1007,11 +1109,17 @@ function renderHelp() {
   if (q) {
     const r = R(q.id);
     h += `<section><h3>Hint for question ${state.cur + 1}</h3>`;
-    if (r.eqStatus === null || r.methodStatus === null) {
-      const isEq = r.eqStatus === null;
-      h += `<p class="muted">${isEq ? "Start by writing the equation. Define a variable first." : "Now choose a method. Use the guide below to decide."}</p>`;
-      if (helpSteps > 0) h += `<div class="hint-steps"><div class="h"><p>${isEq ? "Equation hint" : "Method hint"}</p><div>${esc(isEq ? q.eqHint : methodHint(q))}</div></div></div>`;
-      else h += `<button class="btn" id="hintNext" type="button">Show ${isEq ? "an equation" : "a method"} hint</button>`;
+    const stage = r.defStatus === null ? "def" : r.eqStatus === null ? "eq" : r.methodStatus === null ? "method" : !r.workStatus ? "work" : null;
+    if (stage) {
+      const info = {
+        def: ["Start by defining the variable: what unknown is the question asking about?", "Variable hint", "What is the question asking you to find? The variable stands for that unknown, with its units."],
+        eq: ["Now write the equation using your variable.", "Equation hint", q.eqHint],
+        method: ["Now choose a method. Use the guide below to decide.", "Method hint", methodHint(q)],
+        work: ["Now start solving.", "Work hint", q.work.kind === "sq" ? q.work.hint : "Distribute, move every term to one side so the equation equals 0, and combine like terms. a goes with the squared term, b with the variable term, and c is the constant." + (q.work.disc ? " Then b² − 4ac." : "")],
+      }[stage];
+      h += `<p class="muted">${info[0]}</p>`;
+      if (helpSteps > 0) h += `<div class="hint-steps"><div class="h"><p>${info[1]}</p><div>${esc(info[2])}</div></div></div>`;
+      else h += `<button class="btn" id="hintNext" type="button">Show a hint</button>`;
     } else {
       h += `<p class="muted">Each click shows one more step of the solution.</p><div class="hint-steps">${q.steps.slice(0, helpSteps).map((s, i) => `<div class="h"><p>Step ${i + 1}: ${esc(s.t)}</p><div class="m">${M(s.m)}</div></div>`).join("")}</div>`;
       if (helpSteps < q.steps.length) h += `<button class="btn" id="hintNext" type="button">${helpSteps ? "Show the next step" : "Show the first step"}</button>`;
@@ -1020,7 +1128,7 @@ function renderHelp() {
     h += `</section>`;
   }
   h += `<section><h3>Solving a word problem</h3><div class="guide">
-    <div><span>1. Define your variable</span><b>"Let t = time in seconds"</b></div>
+    <div><span>1. Define your variable (with units)</span><b>"Let t = time in seconds"</b></div>
     <div><span>2. Write the equation</span><b>Use the model or a formula</b></div>
     <div><span>3. Solve</span><b>Pick the best method</b></div>
     <div><span>4. Interpret</span><b>Keep only answers that make sense, rounded to hundredths</b></div>
@@ -1038,7 +1146,7 @@ function renderHelp() {
     <div><span>Equal to zero, and factors of a·c add to b</span><b>Factoring</b></div>
     <div><span>b² − 4ac isn't a perfect square</span><b>Quadratic formula</b></div>
     <div><span>Supporting or checking your answer</span><b>Graphing, with key points labeled</b></div>
-  </div></section>
+  </div><div class="actions" style="margin-top:10px">${desmosLink()}</div></section>
   <section><h3>How to type answers</h3><div class="typing">
     <code>1.77</code><span>Decimals rounded to the nearest hundredth</span>
     <code>6600</code><span>Whole numbers (6,600 works too)</span>
@@ -1070,27 +1178,41 @@ document.addEventListener("click", e => {
   }
   if (!q) return;
   const r = R(q.id);
+  if (t.dataset.def !== undefined && r.defStatus === null) { r.defPick = +t.dataset.def; renderQuestion(); save(); return; }
+  if (t.id === "checkDef" && r.defPick !== null) { r.defStatus = q.defs[r.defPick].ok ? "right" : "wrong"; render(); return; }
+  if (t.id === "checkWork") { doWork(); return; }
+  if (t.id === "showWork") { r.workStatus = "shown"; if (r.workFirstOk === null) r.workFirstOk = false; render(); setTimeout(() => $("#ans0") && $("#ans0").focus(), 0); return; }
   if (t.dataset.eq !== undefined && r.eqStatus === null) { r.eqPick = +t.dataset.eq; renderQuestion(); save(); return; }
   if (t.id === "checkEq" && r.eqPick !== null) { r.eqStatus = q.choices[r.eqPick].ok ? "right" : "wrong"; render(); return; }
   if (t.dataset.method && r.methodStatus === null) { r.method = t.dataset.method; renderQuestion(); save(); return; }
   if (t.id === "checkMethod" && r.method) {
     r.methodStatus = methodStatusFor(q, r.method); r.methodOk = r.methodStatus !== "wrong";
-    lastField = 0; render(); setTimeout(() => $("#ans0") && $("#ans0").focus(), 0); return;
+    lastField = 0; render(); setTimeout(() => $("#wk0") && $("#wk0").focus(), 0); return;
   }
   if (t.dataset.ins !== undefined) { insertAtCursor(t.dataset.ins); return; }
   if (t.id === "checkAns") { doCheck(); return; }
   if (t.id === "reveal") { r.revealed = true; r.last = { status: "revealed" }; if (r.firstOk === null) r.firstOk = false; render(); return; }
 });
-document.addEventListener("focusin", e => { if (e.target.classList && e.target.classList.contains("ans")) lastField = +e.target.dataset.field; });
+let lastInputId = null;
+document.addEventListener("focusin", e => {
+  const c = e.target.classList; if (!c) return;
+  if (c.contains("ans")) { lastField = +e.target.dataset.field; lastInputId = e.target.id; }
+  if (c.contains("wk")) lastInputId = e.target.id;
+});
 document.addEventListener("input", e => {
   if (e.target.classList && e.target.classList.contains("ans")) {
     const q = state.questions[state.cur]; state.drafts = state.drafts || {};
     const d = state.drafts[q.id] = state.drafts[q.id] || []; d[+e.target.dataset.field] = e.target.value; save();
   }
+  if (e.target.classList && e.target.classList.contains("wk")) {
+    const q = state.questions[state.cur]; state.wdrafts = state.wdrafts || {};
+    const d = state.wdrafts[q.id] = state.wdrafts[q.id] || []; d[+e.target.dataset.wk] = e.target.value; save();
+  }
 });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && !$("#helpModal").hidden) closeHelp();
   if (e.key === "Enter" && e.target.classList && e.target.classList.contains("ans")) { e.preventDefault(); doCheck(); }
+  if (e.key === "Enter" && e.target.classList && e.target.classList.contains("wk")) { e.preventDefault(); doWork(); }
 });
 $("#helpModal").addEventListener("click", e => { if (e.target.id === "helpModal") closeHelp(); });
 function insertAtCursor(txt) {
@@ -1100,6 +1222,19 @@ function insertAtCursor(txt) {
   const pos = s + (txt === "()" ? 1 : txt.length);
   inp.focus(); inp.setSelectionRange(pos, pos);
   inp.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function doWork() {
+  const q = state.questions[state.cur], r = R(q.id);
+  if (!$("#wk0") || r.workStatus) return;
+  const raws = workFields(q).map((f, i) => $("#wk" + i).value);
+  let res;
+  try { res = checkWork(q, raws); } catch (err) { r.workLast = { status: "error", msg: err.message }; render(); return; }
+  r.workTries++;
+  if (r.workFirstOk === null) r.workFirstOk = res.ok;
+  r.workLast = { status: res.ok ? "right" : "wrong", msg: res.msg, abcOk: res.abcOk, equiv: res.equiv };
+  if (res.ok) r.workStatus = "right";
+  render();
+  if (res.ok) setTimeout(() => $("#ans0") && $("#ans0").focus(), 0);
 }
 function doCheck() {
   const q = state.questions[state.cur], r = R(q.id);
@@ -1155,8 +1290,9 @@ $("#calc").addEventListener("click", e => {
   if (fn === "ans") Calc.insert("ANS");
   if (fn === "eval") Calc.run();
   if (b.id === "calcUse") {
-    const inp = $("#ans" + lastField) || $("#ans0");
-    if (!inp || inp.disabled) { $("#calcOut").classList.add("err"); $("#calcOut").textContent = "Open step 3 of a question to use the answer box."; return; }
+    let inp = lastInputId && $("#" + lastInputId);
+    if (!inp || inp.disabled) inp = [...document.querySelectorAll(".ans, .wk")].find(x => !x.disabled);
+    if (!inp) { $("#calcOut").classList.add("err"); $("#calcOut").textContent = "Click an answer box first."; return; }
     inp.value = "" + Calc.ans; inp.dispatchEvent(new Event("input", { bubbles: true })); inp.focus();
   }
 });
