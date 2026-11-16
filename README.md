@@ -1,4 +1,4 @@
-# Lesson 2.7: Quadratic Word Problems Review
+# 2-8 Notes Word Problems
 
 An interactive review for solving quadratic word problems. For each problem, students:
 
